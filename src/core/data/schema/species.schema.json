@@ -238,7 +238,8 @@
       "properties": {
         "assetRoot": { "type": "string" },
         "animationClips": { "$ref": "#/definitions/clipMap" },
-        "audio": { "type": "object", "additionalProperties": { "type": "string" } }
+        "audio": { "type": "object", "additionalProperties": { "type": "string" } },
+        "sprites": { "$ref": "#/definitions/spriteSheet" }
       }
     },
     "affection": {
@@ -352,6 +353,51 @@
       "additionalProperties": {
         "type": "array",
         "items": { "type": "string" }
+      }
+    },
+    "spriteAnchor": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "type": "number" }
+    },
+    "spriteClip": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["src", "frames", "fps"],
+      "properties": {
+        "src": { "type": "string", "minLength": 1 },
+        "frames": { "type": "integer", "minimum": 1 },
+        "fps": { "type": "number", "minimum": 0.1 },
+        "loop": { "type": "boolean" },
+        "frameWidth": { "type": "integer", "minimum": 1 },
+        "frameHeight": { "type": "integer", "minimum": 1 },
+        "anchor": { "$ref": "#/definitions/spriteAnchor" },
+        "baselineY": { "type": "number" }
+      }
+    },
+    "spriteSheet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "clips"],
+      "properties": {
+        "format": { "type": "string", "enum": ["sheet-row", "frame-files"] },
+        "defaults": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "frameWidth": { "type": "integer", "minimum": 1 },
+            "frameHeight": { "type": "integer", "minimum": 1 },
+            "anchor": { "$ref": "#/definitions/spriteAnchor" },
+            "baselineY": { "type": "number" },
+            "facing": { "type": "string" },
+            "loop": { "type": "boolean" }
+          }
+        },
+        "clips": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/spriteClip" }
+        }
       }
     }
   }
