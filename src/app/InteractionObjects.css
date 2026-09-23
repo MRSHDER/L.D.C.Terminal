@@ -45,9 +45,9 @@
   width: 100%;
   height: 100%;
   display: block;
-  overflow: visible;
+  object-fit: contain;
   image-rendering: pixelated;
-  shape-rendering: crispEdges;
+  image-rendering: crisp-edges;
 }
 
 .ldc-object--dragging .ldc-glyph {
