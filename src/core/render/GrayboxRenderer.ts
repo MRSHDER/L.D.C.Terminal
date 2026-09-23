@@ -1,8 +1,6 @@
 /**
  * L.D.C. — 灰盒渲染器（PixiJS）
- *
- * 唯一接触 Pixi 的文件。只读 RenderState。坐标 Math.round()。
- * 部位比例来自 species.physical.silhouette，仍然零素材。
+ * 唯一接触 Pixi。比例来自 species.physical.silhouette，零素材。
  */
 
 import {
@@ -41,6 +39,7 @@ export class GrayboxRenderer {
   private readonly earGfxR: Graphics;
   private readonly headLayer: Container;
   private readonly headGfx: Graphics;
+  private readonly neckGfx: Graphics;
   private readonly snoutGfx: Graphics;
   private readonly eyesGfx: Graphics;
   private readonly background: Graphics;
@@ -71,7 +70,9 @@ export class GrayboxRenderer {
     this.earLayerR.addChild(this.earGfxR);
     this.headLayer = new Container();
     this.headGfx = new Graphics();
+    this.neckGfx = new Graphics();
     this.snoutGfx = new Graphics();
+    this.headLayer.addChild(this.neckGfx);
     this.headLayer.addChild(this.headGfx);
     this.headLayer.addChild(this.snoutGfx);
     this.eyesGfx = new Graphics();
@@ -165,7 +166,7 @@ export class GrayboxRenderer {
     const bodyW = sil.torsoW;
     const bodyH = sil.torsoH;
     this.bodyGfx.clear();
-    this.drawRoundedPixelBlock(this.bodyGfx, -bodyW / 2, -bodyH, bodyW, bodyH, {
+    this.drawTorso(this.bodyGfx, bodyW, bodyH, {
       fill: bodyFill,
       shade: PALETTE.bodyShade,
       highlight: PALETTE.bodyHighlight,
@@ -180,15 +181,31 @@ export class GrayboxRenderer {
       highlight: PALETTE.bodyHighlight,
       outline: PALETTE.bodyOutline,
     });
+    this.neckGfx.clear();
+    {
+      const nw = Math.max(4, Math.round(headW * 0.38));
+      const nh = Math.max(4, Math.round(headH * 0.38));
+      this.neckGfx.rect(-headW / 2 - nw + 2, -Math.round(headH * 0.42), nw, nh).fill({ color: PALETTE.bodyFill });
+      this.neckGfx.rect(-headW / 2 - nw + 2, -Math.round(headH * 0.42) + nh - 1, nw, 1).fill({
+        color: PALETTE.bodyShade,
+      });
+    }
     this.snoutGfx.clear();
     if (sil.snoutW >= 2) {
-      const snoutX = Math.round(headW / 2) - 1;
-      const snoutY = -Math.round(headH * 0.42);
-      this.snoutGfx.rect(snoutX, snoutY, sil.snoutW, sil.snoutH).fill({ color: PALETTE.headFill });
-      this.snoutGfx.rect(snoutX, snoutY + sil.snoutH - 1, sil.snoutW, 1).fill({ color: PALETTE.headShade });
-      this.snoutGfx.rect(snoutX + sil.snoutW - 1, snoutY + 1, 1, Math.max(1, sil.snoutH - 2)).fill({
-        color: PALETTE.bodyOutline,
-      });
+      const sx = Math.round(headW / 2) - 1;
+      const top = -Math.round(headH * 0.52);
+      const bot = -Math.round(headH * 0.14);
+      const tipX = sx + sil.snoutW;
+      const tipY = -Math.round(headH * 0.34);
+      this.snoutGfx
+        .moveTo(sx, top)
+        .lineTo(tipX, tipY)
+        .lineTo(tipX, tipY + Math.max(3, sil.snoutH - 2))
+        .lineTo(sx, bot)
+        .closePath()
+        .fill({ color: PALETTE.headFill });
+      this.snoutGfx.rect(tipX - 1, tipY + 1, 2, 2).fill({ color: PALETTE.bodyOutline });
+      this.snoutGfx.rect(sx, bot - 1, Math.max(2, sil.snoutW - 1), 1).fill({ color: PALETTE.headShade });
     }
     this.drawEar(this.earGfxL, sil, -1);
     this.drawEar(this.earGfxR, sil, 1);
@@ -220,27 +237,77 @@ export class GrayboxRenderer {
     };
   }
 
+  private drawTorso(
+    g: Graphics,
+    w: number,
+    h: number,
+    colors: { fill: number; shade: number; highlight: number; outline: number },
+  ): void {
+    const x0 = -w / 2;
+    const x1 = w / 2;
+    const frontLift = Math.max(2, Math.round(h * 0.16));
+    const rearDrop = Math.max(1, Math.round(h * 0.08));
+    const notch = Math.max(2, Math.round(Math.min(w, h) * 0.1));
+    g.moveTo(x0 + notch, -h + rearDrop)
+      .lineTo(x1 - notch, -h - frontLift)
+      .lineTo(x1, -h - frontLift + notch)
+      .lineTo(x1, -notch)
+      .lineTo(x1 - notch, 0)
+      .lineTo(x0 + notch, 0)
+      .lineTo(x0, -notch)
+      .lineTo(x0, -h + rearDrop + notch)
+      .closePath()
+      .fill({ color: colors.fill });
+    g.rect(x0 + notch, -Math.max(2, Math.round(h * 0.2)), w - notch * 2, Math.max(2, Math.round(h * 0.2))).fill({
+      color: colors.shade,
+    });
+    g.moveTo(x0 + notch, -h + rearDrop)
+      .lineTo(x1 - notch, -h - frontLift)
+      .stroke({ color: colors.highlight, width: 1, alignment: 0 });
+    g.moveTo(x0 + notch, -h + rearDrop)
+      .lineTo(x1 - notch, -h - frontLift)
+      .lineTo(x1, -h - frontLift + notch)
+      .lineTo(x1, -notch)
+      .lineTo(x1 - notch, 0)
+      .lineTo(x0 + notch, 0)
+      .lineTo(x0, -notch)
+      .lineTo(x0, -h + rearDrop + notch)
+      .closePath()
+      .stroke({ color: colors.outline, width: 1, alignment: 0 });
+  }
+
   private drawEar(g: Graphics, sil: ResolvedSilhouette, side: -1 | 1): void {
     g.clear();
     const w = sil.earW;
     const h = sil.earH;
     if (sil.earShape === 'drop') {
-      g.rect(-w / 2, 0, w, h).fill({ color: PALETTE.headShade });
+      g.moveTo(-w / 2, 0)
+        .lineTo(w / 2, 1)
+        .lineTo(Math.round(w * 0.35) * side, h)
+        .lineTo(-Math.round(w * 0.15), h - 1)
+        .closePath()
+        .fill({ color: PALETTE.headShade });
       g.rect(-w / 2, 0, w, 1).fill({ color: PALETTE.bodyOutline });
-      g.rect(-w / 2, h - 1, w, 1).fill({ color: PALETTE.bodyOutline });
       return;
     }
     if (sil.earShape === 'fold') {
       const upper = Math.max(3, Math.round(h * 0.55));
-      g.rect(-w / 2, -upper, w, upper).fill({ color: PALETTE.headShade });
-      g.rect(side > 0 ? 0 : -w, -2, Math.round(w * 1.4), Math.max(2, Math.round(h * 0.35))).fill({
+      g.moveTo(-w / 2, 0)
+        .lineTo(0, -upper)
+        .lineTo(w / 2, 0)
+        .closePath()
+        .fill({ color: PALETTE.headShade });
+      g.rect(side > 0 ? 0 : -w, -2, Math.round(w * 1.3), Math.max(2, Math.round(h * 0.38))).fill({
         color: PALETTE.headFill,
       });
-      g.rect(-w / 2, -upper, w, 1).fill({ color: PALETTE.bodyOutline });
       return;
     }
-    g.rect(-w / 2, -h, w, h).fill({ color: PALETTE.headShade });
-    g.rect(-w / 2, -h, w, 1).fill({ color: PALETTE.bodyOutline });
+    g.moveTo(-w / 2, 1)
+      .lineTo(0, -h)
+      .lineTo(w / 2, 2)
+      .closePath()
+      .fill({ color: PALETTE.headShade });
+    g.rect(-1, -h, 2, 1).fill({ color: PALETTE.bodyOutline });
   }
 
   private geometry = {
@@ -314,42 +381,46 @@ export class GrayboxRenderer {
     });
 
     const poseScale = rs.pose.bodyHeightRatio * p.scaleY;
-    this.bodyLayer.position.set(baseX, baseY);
-    this.bodyLayer.scale.set(p.scaleX, poseScale);
+    const stand = Math.round(geo.legH * poseScale * 0.9);
+    const torsoY = baseY - stand;
+    this.bodyLayer.position.set(baseX, torsoY);
+    this.bodyLayer.scale.set(dir * Math.abs(p.scaleX || 1), poseScale);
     this.bodyLayer.rotation = 0;
 
     const legW = geo.legW;
     const legH = geo.legH;
     const legGap = geo.legGap;
     const phase = rs.pose.legPhase;
-    const bodyBottom = baseY - Math.round(geo.bodyH * poseScale * 0.02);
-    const legTop = bodyBottom - Math.round(legH * 0.35);
-    const frontX = dir * Math.round(geo.bodyW * 0.26);
-    const backX = -dir * Math.round(geo.bodyW * 0.30);
+    const overlap = Math.round(legH * 0.18);
+    const legTop = torsoY - overlap;
+    const frontX = dir * Math.round(geo.bodyW * 0.28);
+    const backX = -dir * Math.round(geo.bodyW * 0.32);
     const halfGap = Math.round(legGap / 2);
     const legDefs = [
-      { x: frontX + halfGap * 0.5, phaseOffset: Math.PI, isFar: true },
-      { x: backX + halfGap * 0.5, phaseOffset: 0, isFar: true },
-      { x: frontX - halfGap * 0.5, phaseOffset: 0, isFar: false },
-      { x: backX - halfGap * 0.5, phaseOffset: Math.PI, isFar: false },
+      { x: frontX + halfGap * 0.45, phaseOffset: Math.PI, isFar: true },
+      { x: backX + halfGap * 0.45, phaseOffset: 0, isFar: true },
+      { x: frontX - halfGap * 0.45, phaseOffset: 0, isFar: false },
+      { x: backX - halfGap * 0.45, phaseOffset: Math.PI, isFar: false },
     ];
     this.legGfx.clear();
     for (const leg of legDefs) {
-      const swingAmp = Math.round(geo.bodyW * 0.12 * Math.min(1, rs.speedRatio * 3 + 0.15));
+      const swingAmp = Math.round(geo.bodyW * 0.1 * Math.min(1, rs.speedRatio * 3 + 0.12));
       const lp = phase + leg.phaseOffset;
       const swingX = Math.round(Math.sin(lp * Math.PI * 2) * swingAmp) * dir;
-      const lift = Math.round(Math.abs(Math.cos(lp * Math.PI * 2)) * Math.max(2, legH * 0.3));
+      const lift = Math.round(
+        Math.abs(Math.cos(lp * Math.PI * 2)) * Math.max(2, legH * 0.22) * Math.min(1, rs.speedRatio * 2.4 + 0.08),
+      );
       const lx = baseX + leg.x + swingX;
       const ly = legTop + lift;
-      const visibleH = Math.max(2, legH - Math.round(lift * 0.6));
+      const visibleH = Math.max(3, baseY - ly - 1);
       const fill = leg.isFar ? PALETTE.bodyShade : PALETTE.bodyFill;
-      this.legGfx.rect(lx - 1, ly + visibleH - 1, legW + 2, 1).fill({ color: PALETTE.bodyOutline });
       this.legGfx.rect(lx, ly, legW, visibleH).fill({ color: fill });
+      this.legGfx.rect(lx - 1, ly + visibleH - 2, legW + 2, 2).fill({ color: PALETTE.bodyOutline });
       this.legGfx.rect(lx, ly, legW, 1).fill({ color: PALETTE.bodyHighlight });
     }
 
-    let tailX = baseX + (facingRight ? -1 : 1) * geo.tailAttachPx;
-    let tailY = baseY - Math.round(geo.bodyH * 0.72 * poseScale);
+    let tailX = baseX - dir * geo.tailAttachPx;
+    let tailY = torsoY - Math.round(geo.bodyH * 0.55 * poseScale);
     let tailAngle = p.tailAnglesDeg[0] ?? 0;
     for (let i = 0; i < this.tailSegments.length; i++) {
       const seg = this.tailSegments[i];
@@ -365,30 +436,30 @@ export class GrayboxRenderer {
     }
     this.tailLayer.position.set(0, 0);
 
-    const bodyTopY = baseY - geo.bodyH * poseScale;
-    const headY = Math.round(bodyTopY + geo.headH * 0.58) + Math.round(rs.pose.headDropPx * poseScale);
+    const headY =
+      torsoY - Math.round(geo.bodyH * poseScale * 0.55) + Math.round(rs.pose.headDropPx * poseScale);
     const headX = baseX + dir * geo.headForwardPx;
     this.headLayer.position.set(headX, headY);
     this.headLayer.scale.set(dir, 1);
     this.headLayer.rotation = ((p.rotationDeg * Math.PI) / 180) * 0.5;
 
     const earOnTop = geo.earShape !== 'drop';
-    const earBaseY = headY - Math.round(geo.headH * (earOnTop ? 0.78 : 0.62));
-    const earBack = headX - dir * Math.round(geo.headW * 0.22);
-    const earFront = headX + dir * Math.round(geo.headW * 0.16);
+    const earBaseY = headY - Math.round(geo.headH * (earOnTop ? 0.92 : 0.55));
+    const earBack = headX - dir * Math.round(geo.headW * 0.28);
+    const earFront = headX - dir * Math.round(geo.headW * 0.04);
     const jitterRad = (p.earJitterDeg * Math.PI) / 180;
     this.earLayerL.position.set(earBack, earBaseY);
-    this.earLayerL.rotation = -0.18 + jitterRad;
+    this.earLayerL.rotation = -0.22 + jitterRad;
     this.earLayerR.position.set(earFront, earBaseY);
-    this.earLayerR.rotation = 0.18 - jitterRad;
+    this.earLayerR.rotation = 0.12 - jitterRad;
     this.redrawEyes(rs, geo.headW, geo.headH);
   }
 
   private redrawEyes(rs: RenderState, headW: number, headH: number): void {
     const g = this.eyesGfx;
     g.clear();
-    const eyeX = Math.round(headW * 0.12);
-    const eyeY = -Math.round(headH * 0.55);
+    const eyeX = Math.round(headW * 0.16);
+    const eyeY = -Math.round(headH * 0.62);
     const eyeW = Math.max(2, Math.round(headW * 0.18));
     const eyeH = Math.max(2, Math.round(headH * 0.22));
     const rawClosure = rs.pose.sleeping ? 1 : Math.max(rs.procedural.eyeClosure, rs.pose.eyeClosure);
