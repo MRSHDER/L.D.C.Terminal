@@ -66,6 +66,94 @@ body {
   flex-wrap: wrap;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Milestone 2：房间模式
+   ─────────────────────────────────────────────────────────────
+
+   ★ 默认体验只有「一个房间 + 一只狗」，没有任何界面元素。
+
+   关键约束：
+     1. 房间占满整个视口，不留边距 —— 任何留白都会让人意识到
+        "这是一个网页里的 iframe"，而不是"一个它待着的房间"。
+     2. 画布按整数倍放大（image-rendering: pixelated），
+        绝不插值 —— 插值会立刻破坏像素风。
+     3. 禁止文本选择与触摸滚动，让整个屏幕都是"可以摸狗的地方"。
+     4. 鼠标指针在画布上是 pointer（手形），暗示"可以摸"。
+        这是唯一允许的"UI 提示"，且不占画面。
+   ───────────────────────────────────────────────────────────── */
+
+.ldc-root--room {
+  padding: 0;
+  max-width: none;
+  gap: 0;
+  min-height: 100dvh;
+}
+
+.ldc-room {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #08080b;
+  overflow: hidden;
+  /* 整个屏幕都是可交互区域 */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.ldc-room__frame {
+  position: relative;
+  /*
+   * 房间按设计比例（320:200 = 1.6）等比放大到填满视口。
+   * 使用 min() 保证任一方向都不会溢出：
+   *   宽度取 min(视口宽, 视口高 × 1.6)
+   */
+  width: min(100vw, calc(100dvh * 1.6));
+  height: min(100dvh, calc(100vw / 1.6));
+  overflow: hidden;
+}
+
+.ldc-room__canvas {
+  position: absolute;
+  inset: 0;
+  /* 手形指针 = "这里可以摸"。唯一的交互暗示，不占画面。 */
+  cursor: pointer;
+}
+
+/* ★ 像素风核心：canvas 放大时使用最近邻，禁止浏览器插值 */
+.ldc-room__canvas canvas,
+.ldc-stage__canvas canvas {
+  width: 100% !important;
+  height: 100% !important;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  display: block;
+}
+
+.ldc-room__error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--ldc-font-mono);
+  color: var(--ldc-error);
+  background: rgb(14 14 18 / 0.9);
+  padding: 20px;
+  text-align: center;
+}
+
+.ldc-room__error pre {
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
+
 .ldc-brand {
   display: flex;
   flex-direction: column;

@@ -77,5 +77,44 @@
   "resources": {
     "assetRoot": "",
     "animationClips": {}
+  },
+
+  "affection": {
+    "bonding": {
+      "gainPerPet": 0.22,
+      "decayPerSec": 0.006,
+      "penaltyPerSecWhenAnnoyed": 0.05,
+      "requiresTouchToNotice": true,
+      "ladder": [
+        { "atBond": 0.0, "state": "LookAt", "label": { "zh": "看向玩家", "en": "Looks at you" } },
+        { "atBond": 0.32, "state": "Approach", "label": { "zh": "靠近一点", "en": "Comes closer" } },
+        { "atBond": 0.55, "state": "Sit", "label": { "zh": "坐到你旁边", "en": "Sits beside you" } },
+        { "atBond": 0.76, "state": "WagTail", "label": { "zh": "摇尾巴", "en": "Wags tail" } },
+        { "atBond": 0.93, "state": "PetEnjoy", "label": { "zh": "闭眼享受", "en": "Eyes closed, content" } }
+      ]
+    },
+    "petting": {
+      "minEffectiveMs": 90,
+      "pleasureBase": 0.35,
+      "arousalGain": 0.28,
+      "tolerance": 3
+    },
+    "annoyance": {
+      "windowMs": 3200,
+      "threshold": 7,
+      "annoyancePerExcess": 0.34,
+      "decayPerSec": 0.3,
+      "leaveAt": 0.78,
+      "sulkMs": 5200
+    }
+  },
+
+  "room": {
+    "floorLineRatio": 0.74,
+    "floorColor": 1973798,
+    "floorShadeColor": 1447452,
+    "wallColor": 1184280,
+    "showGrid": false,
+    "playerAnchor": { "xRatio": 0.5, "yRatio": 1.15 }
   }
 }

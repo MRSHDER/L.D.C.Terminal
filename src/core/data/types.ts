@@ -254,6 +254,159 @@ export interface SpeciesData {
   readonly preferences: PreferencesConfig;
   readonly locomotion: LocomotionConfig;
   readonly resources: ResourcesConfig;
+  /** ★ Milestone 2：亲昵与骚扰相关配置 */
+  readonly affection: AffectionConfig;
+  /** ★ Milestone 2：房间配置（本阶段只有一个房间） */
+  readonly room: RoomConfig;
+}
+
+// ─────────────────────────────────────────────────────────────
+// 9.5 羁绊（Bonding）—— Milestone 2「第一次建立连接」
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * 一次「抚摸」的回应阶梯（Petting Ladder）。
+ *
+ * ★ 这是 Milestone 2 的核心机制，也是最容易做错的地方。
+ *
+ * 设计意图（来自项目要求）：
+ *   玩家第一次点 → 看向玩家
+ *   第二次       → 慢慢走过来
+ *   第三次       → 坐你旁边
+ *   第四次       → 摇尾巴
+ *   第五次       → 闭眼
+ *   玩家什么按钮都没点，只是"摸"，却觉得"它认识我了"。
+ *
+ * 关键：这不是"点五次解锁五个动作"的计数器。
+ *   它是一个**由羁绊值驱动的连续阶梯**，且会因冷落而回落。
+ *   因此"认识我"这件事必须靠**持续陪伴**维持 —— 这才是"生命感"。
+ *
+ * 每一级包含：
+ *   atBond    —— 触发该级所需的羁绊值（0..1）
+ *   state     —— 该级对应的状态 id（必须在状态机中已注册）
+ *   minBond   —— 进入该级后，羁绊至少要维持在此值以上才不会掉级
+ */
+export interface BondRung {
+  /** 触发该级所需的羁绊值阈值（0..1，严格递增） */
+  readonly atBond: number;
+  /** 该级对应的状态 id */
+  readonly state: string;
+  /** 人类可读的说明（仅用于调试面板与文档） */
+  readonly label: LocalizedText;
+}
+
+/**
+ * 羁绊系统配置。
+ *
+ * 羁绊值 bond ∈ [0, 1]，是**慢变量**：
+ *   - 每次被温柔对待都会缓慢上升
+ *   - 长时间无人理会会缓慢下降
+ *   - 连续骚扰（快速连点）会明显下降
+ *
+ * 它不直接控制行为，而是决定「回应阶梯踩到哪一级」。
+ */
+export interface BondingConfig {
+  /**
+   * 每次有效抚摸增加的羁绊值。
+   * 参考：0.12 → 约 8 次抚摸达到满羁绊。
+   * 数值越大，狗越"自来熟"。
+   */
+  readonly gainPerPet: number;
+  /** 每秒自然衰减（无人理会时）。0.004 → 约 4 分钟从满到空 */
+  readonly decayPerSec: number;
+  /** 被骚扰（快速连点）时每秒额外扣除 */
+  readonly penaltyPerSecWhenAnnoyed: number;
+  /** 羁绊回应的阶梯。必须按 atBond 升序，且第一级通常为 0 */
+  readonly ladder: readonly BondRung[];
+  /**
+   * 「看向玩家」是否需要玩家先进入狗的注意范围。
+   * true  → 狗只在被摸到时才看过来（更被动，更像陌生狗）
+   * false → 狗会主动留意玩家的存在
+   */
+  readonly requiresTouchToNotice: boolean;
+}
+
+/**
+ * 抚摸回应配置。
+ *
+ * 决定「摸一下会发生什么」。与 bonding 分工：
+ *   bonding  → 决定**长期**亲近程度（记得你）
+ *   petting  → 决定**当下**这一下怎么回应（瞬间反应）
+ */
+export interface PettingConfig {
+  /** 单次抚摸的判定：按住超过该时长算一次有效抚摸 */
+  readonly minEffectiveMs: number;
+  /**
+   * 一次抚摸产生的基础愉悦（提升 valence）。
+   * 会被当前羁绊值放大 —— 越亲近，被摸越开心。
+   */
+  readonly pleasureBase: number;
+  /**
+   * 抚摸时的兴奋度增量（尾巴摆得更欢）。
+   * 高能量犬种数值更高。
+   */
+  readonly arousalGain: number;
+  /** 同一位置连续抚摸的耐受次数，超过后开始烦躁 */
+  readonly tolerance: number;
+}
+
+/**
+ * 「骚扰」判定与反应。
+ *
+ * 项目要求里的"连续点 → 觉得烦 → 走开"。
+ * 这里定义什么是"烦"：单位时间内的抚摸次数超过阈值。
+ */
+export interface AnnoyanceConfig {
+  /** 统计窗口（ms）。在此窗口内的抚摸次数参与判定 */
+  readonly windowMs: number;
+  /** 窗口内超过该次数视为骚扰 */
+  readonly threshold: number;
+  /** 每次骚扰增加的不悦值 */
+  readonly annoyancePerExcess: number;
+  /** 不悦值的自然衰减（每秒） */
+  readonly decayPerSec: number;
+  /** 超过该值触发「走开」 */
+  readonly leaveAt: number;
+  /** 走开后需要多久才愿意再次接近（ms） */
+  readonly sulkMs: number;
+}
+
+/** 亲昵/情绪相关配置集合 */
+export interface AffectionConfig {
+  readonly bonding: BondingConfig;
+  readonly petting: PettingConfig;
+  readonly annoyance: AnnoyanceConfig;
+}
+
+// ─────────────────────────────────────────────────────────────
+// 9.6 房间（Room）—— Milestone 2 只有一个房间，无 UI
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * 房间配置。
+ *
+ * Milestone 2 刻意只做一个房间、不给任何 UI / 菜单 / 按钮。
+ * 玩家能做的唯一事情就是「摸狗」。
+ *
+ * 地板高度用比例表示（0..1），便于适配不同窗口尺寸。
+ */
+export interface RoomConfig {
+  /** 地板线位置（占画面高度的比例）。0.72 = 下方 28% 是地板 */
+  readonly floorLineRatio: number;
+  /** 地面色（十六进制） */
+  readonly floorColor: number;
+  /** 地面暗部色 */
+  readonly floorShadeColor: number;
+  /** 墙面色 */
+  readonly wallColor: number;
+  /** 是否绘制网格（仅开发期参考，正式体验应为 false） */
+  readonly showGrid: boolean;
+  /**
+   * 玩家所在的"世界外"位置（点击点的默认落点）。
+   * 用于「狗看向玩家」——狗需要知道玩家在哪。
+   * 坐标同样为比例 0..1。
+   */
+  readonly playerAnchor: { readonly xRatio: number; readonly yRatio: number };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -316,4 +469,29 @@ export interface BehaviorsData {
   readonly microBehaviors: readonly MicroBehavior[];
   /** 全局随机性附加量 0..1，叠加在 temperament.randomness 之上 */
   readonly extraRandomness: number;
+
+  // ── Milestone 2 新增：全部可选，未提供则继承引擎默认 ──
+
+  /**
+   * 抚摸回应权重。
+   * 决定「被摸时」狗的具体表现分布（接受 / 转头 / 走开 / 无反应）。
+   * 与 species.affection.bonding 的阶梯配合：
+   *   阶梯决定"它现在多亲近你"，此表决定"这一下它怎么回应"。
+   */
+  readonly pettingResponse?: InteractionResponse;
+
+  /**
+   * 骚扰反应权重（按烦躁程度分档）。
+   * 未提供时使用引擎默认：轻度=转头，中度=起身，重度=走开。
+   */
+  readonly annoyanceResponse?: InteractionResponse;
+
+  /**
+   * 性格对"烦躁阈值"的修正。
+   * 例如 gentleness 高 → 更能忍受反复抚摸。
+   * 缺省为空对象，即不修正。
+   */
+  readonly annoyanceBias?: Readonly<
+    Partial<Record<TemperamentKey, PersonalityBiasEntry>>
+  >;
 }

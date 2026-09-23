@@ -218,6 +218,129 @@ export function validateSpeciesShape(raw: Record<string, unknown>): ValidationEr
     }
   }
 
+  // ── affection（Milestone 2，可选） ──
+  if (raw['affection'] !== undefined) {
+    const aff = requireObject(raw, 'affection', '', errors);
+    if (aff) {
+      if (aff['bonding'] !== undefined) {
+        const b = requireObject(aff, 'bonding', 'affection', errors);
+        if (b) {
+          requireNumber(b, 'gainPerPet', 'affection.bonding', errors, { min: 0, max: 1 });
+          requireNumber(b, 'decayPerSec', 'affection.bonding', errors, { min: 0 });
+          const ladder = b['ladder'];
+          if (ladder !== undefined) {
+            if (!Array.isArray(ladder) || ladder.length === 0) {
+              errors.push('affection.bonding.ladder 必须是非空数组');
+            } else {
+              ladder.forEach((r, i) => {
+                if (!isObject(r)) {
+                  errors.push(`affection.bonding.ladder[${i}] 必须是对象`);
+                  return;
+                }
+                requireUnit(r, 'atBond', `affection.bonding.ladder[${i}]`, errors);
+                if (!isString(r['state']) || r['state'].length === 0) {
+                  errors.push(`affection.bonding.ladder[${i}].state 必须是非空字符串`);
+                }
+              });
+
+              // ★ 阶梯阈值必须严格递增 —— 否则某一级永远不会被选中。
+              //   这类错误不会崩溃，只会让"狗永远停在低级别"，
+              //   极难从画面上判断，因此必须在构建期拦住。
+              const thresholds = ladder
+                .filter(isObject)
+                .map((r) => r['atBond'])
+                .filter(isNumber);
+              for (let i = 1; i < thresholds.length; i++) {
+                if (thresholds[i]! <= thresholds[i - 1]!) {
+                  errors.push(
+                    `affection.bonding.ladder 阈值必须严格递增，但 [${i}] = ${thresholds[i]} ≤ [${i - 1}] = ${thresholds[i - 1]}`,
+                  );
+                }
+              }
+            }
+          }
+        }
+      }
+
+      if (aff['petting'] !== undefined) {
+        const p = requireObject(aff, 'petting', 'affection', errors);
+        if (p) {
+          requireNumber(p, 'minEffectiveMs', 'affection.petting', errors, { min: 16 });
+          requireUnit(p, 'pleasureBase', 'affection.petting', errors);
+          requireUnit(p, 'arousalGain', 'affection.petting', errors);
+        }
+      }
+
+      if (aff['annoyance'] !== undefined) {
+        const a = requireObject(aff, 'annoyance', 'affection', errors);
+        if (a) {
+          requireNumber(a, 'windowMs', 'affection.annoyance', errors, { min: 100 });
+          requireNumber(a, 'threshold', 'affection.annoyance', errors, { min: 1, integer: true });
+          requireNumber(a, 'annoyancePerExcess', 'affection.annoyance', errors, { min: 0 });
+          requireNumber(a, 'decayPerSec', 'affection.annoyance', errors, { min: 0 });
+          requireNumber(a, 'leaveAt', 'affection.annoyance', errors, { min: 0.01 });
+          requireNumber(a, 'sulkMs', 'affection.annoyance', errors, { min: 0 });
+
+          // ★ leaveAt 必须可达。
+          //
+          //   annoyance 经 clamp01 限制在 [0, 1]。
+          //   若 leaveAt 接近或超过 1，狗**永远不会走开** —— 因为达不到阈值。
+          //
+          //   这个 bug 在开发中真实发生过两次（graybox 与 graybox-shy），
+          //   表现都是"连点它不生气"，从画面上完全看不出是配置错误。
+          //   更隐蔽的是：性格修正会乘一个系数（可能 > 1），
+          //   因此即便 leaveAt < 1，乘完之后仍可能越过 1。
+          //
+          //   这里保守要求 leaveAt ≤ 0.85，为性格修正留出余量。
+          const leaveAt = a['leaveAt'];
+          if (isNumber(leaveAt) && leaveAt > 0.85) {
+            errors.push(
+              `affection.annoyance.leaveAt = ${leaveAt} 过高（应 ≤ 0.85）。` +
+                `annoyance 上限为 1.0，而性格修正会乘一个可能 > 1 的系数，` +
+                `leaveAt 过大会导致「烦躁永远达不到阈值、狗永远不走开」。`,
+            );
+          }
+        }
+      }
+    }
+  }
+
+  // ── room（Milestone 2，可选） ──
+  if (raw['room'] !== undefined) {
+    const room = requireObject(raw, 'room', '', errors);
+    if (room) {
+      requireNumber(room, 'floorLineRatio', 'room', errors, { min: 0, max: 1 });
+      requireNumber(room, 'floorColor', 'room', errors, { min: 0 });
+      requireNumber(room, 'wallColor', 'room', errors, { min: 0 });
+
+      // ★ 颜色必须落在「黑白灰」基调内。
+      //
+      //   项目视觉约束是"黑白灰为主，少量天蓝强调"。
+      //   房间配色手写成十进制很容易出错 —— 开发中真实发生过一次：
+      //   把 0x1e1e26 手算成 2031654（实际应为 1973798），
+      //   结果地板渲染成刺眼的品红，而 JSON 本身完全合法、校验通过。
+      //
+      //   这里检查 RGB 三通道的**色度差**：通道间差异过大意味着高饱和度，
+      //   与项目的低饱和像素风冲突。注意这是"告警"级设计约束，
+      //   因此仅对明显偏色（差值 > 48）报错。
+      for (const key of ['floorColor', 'floorShadeColor', 'wallColor'] as const) {
+        const c = room[key];
+        if (!isNumber(c)) continue;
+        const r = (c >> 16) & 0xff;
+        const g = (c >> 8) & 0xff;
+        const b = c & 0xff;
+        const spread = Math.max(r, g, b) - Math.min(r, g, b);
+        if (spread > 48) {
+          errors.push(
+            `room.${key} = ${c} (#${c.toString(16).padStart(6, '0')}) 饱和度偏高（通道差 ${spread}）。` +
+              `项目配色为黑白灰基调，请确认是否把十六进制手算错了` +
+              `（例如应为 0x1e1e26 = 1973798）。`,
+          );
+        }
+      }
+    }
+  }
+
   return errors;
 }
 

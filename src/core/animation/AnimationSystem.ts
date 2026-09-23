@@ -73,6 +73,15 @@ export interface GrayboxPose {
   readonly headDropPx: number;
   /** 是否处于睡眠姿态 —— 渲染层据此把眼睛画成闭合线 */
   readonly sleeping: boolean;
+  /**
+   * 闭眼程度 0..1（Milestone 2）。
+   *
+   * ★ 与 procedural.eyeClosure 的区别：
+   *   procedural.eyeClosure 是**眨眼反射**（短暂、周期性）
+   *   pose.eyeClosure 是**情绪性闭眼**（持续、由享受程度驱动）
+   *   两者取最大值渲染 —— 因为"享受时的闭眼"不会因为眨眼周期而睁开。
+   */
+  readonly eyeClosure: number;
 }
 
 export interface AnimationSystemOptions {
@@ -85,18 +94,43 @@ interface PoseTarget {
   readonly bodyHeightRatio: number;
   readonly headDropPx: number;
   readonly sleeping: boolean;
+  /**
+   * 该姿态下的眼睛闭合程度（情绪性，非眨眼）。
+   * 缺省 0（睁眼）。仅 PetEnjoy / Sleep 等状态需要。
+   */
+  readonly eyeClosure?: number;
 }
 
 /**
  * 灰盒姿态表。
  * 这些是「通用状态 → 姿态」的映射，不含犬种特征。
  * 犬种差异通过 animation.targetFps / transitions 等参数体现。
+ *
+ * ★ Milestone 2 新增了互动状态的姿态：
+ *   它们通过「身高比例 + 头部下沉」两个量就能表达出
+ *   "看向你 / 走过来 / 坐下 / 享受 / 不高兴" 的区别，
+ *   无需为每个状态单独做美术 —— 这正是灰盒的价值。
  */
 const POSE_BY_STATE: Readonly<Record<string, PoseTarget>> = {
+  // ── 常规行为 ──
   Idle: { bodyHeightRatio: 1, headDropPx: 0, sleeping: false },
   Walk: { bodyHeightRatio: 0.97, headDropPx: 0, sleeping: false },
   Sit: { bodyHeightRatio: 0.72, headDropPx: 4, sleeping: false },
   Sleep: { bodyHeightRatio: 0.58, headDropPx: 12, sleeping: true },
+
+  // ── Milestone 2 互动姿态 ──
+  // 看向玩家：站直、头抬起（headDropPx 为负 = 抬头）
+  LookAt: { bodyHeightRatio: 1.0, headDropPx: -3, sleeping: false },
+  // 靠近：走动姿态
+  Approach: { bodyHeightRatio: 0.97, headDropPx: 0, sleeping: false },
+  // 摇尾巴：站直且抬头，配合情绪层拉高的 arousal → 尾巴自动摆得欢
+  WagTail: { bodyHeightRatio: 1.0, headDropPx: -4, sleeping: false },
+  // 闭眼享受：坐下 + 头微垂（放松），眼睛闭合 0.85（缓慢闭眼，非瞬间）
+  PetEnjoy: { bodyHeightRatio: 0.7, headDropPx: 8, sleeping: false, eyeClosure: 0.85 },
+  // 烦躁：站直、头略偏（回避感）
+  Annoyed: { bodyHeightRatio: 1.0, headDropPx: 2, sleeping: false },
+  // 走开：走动姿态
+  Retreat: { bodyHeightRatio: 0.97, headDropPx: 1, sleeping: false },
 };
 
 const DEFAULT_POSE: PoseTarget = POSE_BY_STATE['Idle']!;
@@ -113,7 +147,10 @@ export class AnimationSystem {
   private currentFrame = 0;
 
   // 姿态插值（sit/walk 之间平滑过渡，避免"啪"一下变矮）
-  private pose: PoseTarget = { ...DEFAULT_POSE };
+  private pose: Required<PoseTarget> = {
+    ...DEFAULT_POSE,
+    eyeClosure: DEFAULT_POSE.eyeClosure ?? 0,
+  };
   private legPhase = 0;
 
   // 上一次输出，用于复用与比较
@@ -152,8 +189,21 @@ export class AnimationSystem {
       });
     }
 
-    // 为常见状态补充程序化 clip（无美术素材时使用）
-    for (const stateId of ['Idle', 'Walk', 'Sit', 'Sleep']) {
+    // 为常见状态补充程序化 clip（无美术素材时使用）。
+    // Milestone 2 的互动状态也需要 clip 条目，否则 requestState 会回退到 Idle
+    // 导致"看向玩家"与"待机"在调试面板上无法区分。
+    for (const stateId of [
+      'Idle',
+      'Walk',
+      'Sit',
+      'Sleep',
+      'LookAt',
+      'Approach',
+      'WagTail',
+      'PetEnjoy',
+      'Annoyed',
+      'Retreat',
+    ]) {
       if (!this.clips.has(stateId)) {
         this.clips.set(stateId, {
           id: stateId,
@@ -215,10 +265,13 @@ export class AnimationSystem {
     // Phase 0/1 未记录 from，故使用 defaultTransitionMs —— 结构已为 Phase 5 预留。
     const transitionMs = species.animation.defaultTransitionMs;
     const t = transitionMs <= 0 ? 1 : Math.min(1, dtMs / transitionMs);
+
     this.pose = {
       bodyHeightRatio: this.pose.bodyHeightRatio + (target.bodyHeightRatio - this.pose.bodyHeightRatio) * t,
       headDropPx: this.pose.headDropPx + (target.headDropPx - this.pose.headDropPx) * t,
       sleeping: target.sleeping,
+      eyeClosure:
+        this.pose.eyeClosure + ((target.eyeClosure ?? 0) - this.pose.eyeClosure) * t,
     };
 
     // ── ② 像素帧推进（低帧率节拍）──
@@ -280,6 +333,7 @@ export class AnimationSystem {
         legPhase: Math.sin(this.legPhase),
         headDropPx: this.pose.headDropPx,
         sleeping: this.pose.sleeping,
+        eyeClosure: this.pose.eyeClosure,
       },
       moving: stateContext.moving,
       speedRatio,
@@ -295,7 +349,7 @@ export class AnimationSystem {
     this.currentFrame = 0;
     this.procedural.reset();
     this.clock.reset();
-    this.pose = { ...DEFAULT_POSE };
+    this.pose = { ...DEFAULT_POSE, eyeClosure: DEFAULT_POSE.eyeClosure ?? 0 };
     this.legPhase = 0;
   }
 }

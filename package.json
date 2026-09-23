@@ -17,6 +17,8 @@
     "species:new": "tsx tools/new-species.ts",
     "sim": "tsx tools/simulate.ts",
     "tune": "tsx tools/tune-transitions.ts",
+    "pet": "tsx tools/pet-test.ts",
+    "calibrate": "tsx tools/calibrate-annoyance.ts",
     "verify": "npm run species:validate && npm run build"
   },
   "dependencies": {

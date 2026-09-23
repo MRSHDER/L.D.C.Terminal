@@ -9,25 +9,35 @@
 
 ---
 
-## 当前状态：Phase 0 / Phase 1（基础框架 + 灰盒验证）
+## 当前状态：Milestone 2 — The First Connection
 
-**本阶段不开发任何犬类业务功能。** 目标只有一个：建立可长期维护的框架。
+**一个房间。一只狗。没有 UI、没有菜单、没有按钮。**
 
-已完成：
+玩家唯一能做的事是「摸它」。
 
-| # | 内容 | 状态 |
+```
+第一次摸   →  它看向你
+继续摸     →  它慢慢走过来 → 坐到你旁边 → 摇尾巴 → 闭眼享受
+快速连点   →  它觉得烦，走开
+安静等一会 →  它消气了
+冷落很久   →  它慢慢忘了你
+```
+
+玩家什么按钮都没点，只是摸。但会觉得「它认识我了」。
+
+### 已完成
+
+| 阶段 | 内容 | 状态 |
 |---|---|---|
-| 1 | Vite + React + TypeScript + PixiJS 工程化 | ✅ |
-| 2 | 目录结构（core / species / app / tools / docs） | ✅ |
-| 3 | GameLoop（固定步长 + 像素节拍器） | ✅ |
-| 4 | EventBus（类型安全事件总线） | ✅ |
-| 5 | SpeciesLoader（JSON Schema 校验 + 三层继承） | ✅ |
-| 6 | JSON Schema（构建期 ajv 完整校验） | ✅ |
-| 7 | StateMachine（层级 FSM + 数据驱动效用裁决） | ✅ |
-| 8 | AnimationSystem（灰盒方块呼吸 / 眨眼 / 走动） | ✅ |
+| **M1** | 引擎骨架（GameLoop / EventBus / SpeciesLoader / FSM / Animation / 灰盒渲染） | ✅ |
+| **M2** | 羁绊系统 · 情绪系统 · 手势识别 · 六个互动状态 · 房间 | ✅ |
 
-**Phase 1 验收标准已达成**：灰盒能根据 JSON 修改移动速度、动画速度与行为节奏，
-且改动**不需要修改任何 TypeScript 代码**。
+**验收**：三个灰盒犬种在**零代码改动**下表现出可测量的性格差异。
+
+| | graybox | graybox-shy | graybox-swift |
+|---|---|---|---|
+| 摸 5 次后羁绊 | 0.99（闭眼） | **0.33**（仍在观望） | — |
+| 连点到走开 | 第 10 次 | **第 9 次** | **第 7 次** |
 
 ---
 
@@ -38,15 +48,22 @@ npm install
 npm run dev          # → http://localhost:5173
 ```
 
-打开后你会看到一只灰盒方块狗在呼吸、眨眼、走动、坐下、打盹。
-右侧面板可以实时调参，观察行为立刻改变。
+打开后整个屏幕就是那个房间。**用鼠标按住狗**。
 
-### 验证「数据驱动」是否真的成立
+调试面板（快照 / 诊断 / 调参）在 `?debug=1` 时出现 ——
+默认体验刻意保持纯净，否则第一眼看到的是"一个工具"而不是"一只狗"。
 
-拖动右侧「参数调校」面板的任意滑块 ——
-它直接写入 `species.json` 的对应字段，引擎热应用，无需刷新页面。
+### 验证它真的成立
 
-或者切换犬种标签（`graybox` ↔ `graybox-swift`），观察两只狗的行为差异。
+```powershell
+npm run pet -- graybox     # 六个场景的完整互动验证（27 项检查）
+npm run calibrate          # 骚扰阈值标定（21 项节奏判定）
+```
+
+### 验证数据驱动
+
+拖动 `?debug=1` 面板里的任意滑块 —— 它直接写入 `species.json` 的对应字段，
+引擎热应用，无需刷新。或者切换犬种标签，观察完全不同的行为。
 **两者差异 100% 来自 JSON，`src/core/` 零改动。**
 
 ---
@@ -55,13 +72,29 @@ npm run dev          # → http://localhost:5173
 
 | 命令 | 作用 |
 |---|---|
-| `npm run dev` | 开发服务器（支持局域网访问，便于平板 / 触摸屏测试） |
+| `npm run dev` | 体验（加 `?debug=1` 打开调试面板） |
 | `npm run build` | 类型检查 + 生产构建 |
+| `npm run pet -- <id>` | **互动验证**：六个场景的完整重放 |
+| `npm run calibrate` | **骚扰阈值标定**：21 项节奏判定 |
 | `npm run species:validate` | 校验所有犬种 JSON（提交前必跑） |
 | `npm run tune -- <id>` | **迁移标定报告**：每个行为的峰值 / 可达性 / 触发时间 |
 | `npm run sim -- <id> <秒数>` | 无头模拟，输出状态分布（无需浏览器） |
 | `npm run species:new -- --id X --name Y` | 生成新犬种脚手架 |
 | `npm run verify` | 校验 + 构建 |
+
+### 为什么有这么多"标定"工具
+
+这个项目的核心体验由**多个参数相乘**决定（性格 × 情绪 × 羁绊 × 时间窗口），
+人脑推算必然出错。开发中真实发生过：
+
+- Walk 行为整段消失（迁移峰值贴着门槛）
+- Sit 占据 62% 时间（迁移触发顺序失衡）
+- 温柔地摸被判成骚扰（结算次数被当成了会话次数）
+- 狗永远不走开（阈值设成 1.0，而 annoyance 上限也是 1.0）
+- 地板渲染成品红（`0x1e1e26` 手算成 `2031654`）
+
+这些从画面上**都看不出是配置错误**。因此每个易错参数都配了扫描/验证工具，
+把"感觉不对"变成"数字不对"。
 
 ### 试试无头模拟器
 
@@ -69,18 +102,9 @@ npm run dev          # → http://localhost:5173
 npm run sim -- graybox 300
 ```
 
-它在**不启动浏览器**的情况下跑完整逻辑，输出状态时长分布与切换序列。
+它在**不启动浏览器**的情况下跑完整逻辑。
 这个工具能跑，就证明逻辑层与渲染层是真正解耦的
 （它完全不 import PixiJS 与 DOM）。
-
-### 试试标定报告
-
-```powershell
-npm run tune -- graybox
-```
-
-输出每个行为迁移的峰值、是否可达、以及触发时间。
-改行为逻辑前先跑它 —— FSM 的分值是多个因子相乘的结果，人脑推算极易出错。
 
 ---
 
@@ -91,22 +115,25 @@ src/
 ├── core/          引擎核心（新增犬种绝不修改这里）
 │   ├── data/      数据契约、默认值、加载与校验
 │   ├── event/     事件总线与契约
-│   ├── fsm/       层级状态机、迁移表、核心状态
+│   ├── fsm/       层级状态机、迁移表、核心状态、互动状态
+│   ├── affection/ ★ M2：羁绊系统、情绪系统
+│   ├── interaction/★ M2：指针适配、手势识别、命中检测
 │   ├── animation/ 帧时钟、振荡器、过程动画、动画系统
-│   ├── render/    灰盒渲染器、调色板
+│   ├── render/    灰盒渲染器、房间、调色板
 │   ├── world/     世界编排、向量、随机数
 │   └── time/      固定步长循环
 │
 ├── species/       ★ 数据扩展区：只放 JSON
 │   ├── index.ts   注册表（唯一需要改的一行）
-│   ├── graybox/   灰盒基准体
-│   └── graybox-swift/
+│   ├── graybox/       中性基准体
+│   ├── graybox-shy/   慢热害羞型
+│   └── graybox-swift/ 敏捷亢奋型
 │
 ├── app/           React 层（薄壳，不参与每帧渲染）
 └── main.tsx
 
-tools/             开发工具（校验 / 模拟 / 标定 / 脚手架）
-docs/              架构说明与新增犬种指南
+tools/             开发工具（校验 / 模拟 / 标定 / 互动验证 / 脚手架）
+docs/              架构说明、新增犬种指南、Milestone 记录
 ```
 
 ---
@@ -162,7 +189,8 @@ npm run species:new -- --id shiba-inu --name "柴犬" --name-en "Shiba Inu" --ca
 
 | 文档 | 内容 |
 |---|---|
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 架构设计、数据流、状态机算法、踩坑记录 |
+| [docs/MILESTONE_2.md](docs/MILESTONE_2.md) | **The First Connection**：羁绊/情绪机制、标定数据、踩坑记录 |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 架构设计、数据流、状态机算法、渲染陷阱 |
 | [docs/SPECIES_AUTHORING.md](docs/SPECIES_AUTHORING.md) | 新增犬种指南、字段对照表、调参流程 |
 
 ---
@@ -180,16 +208,28 @@ npm run species:new -- --id shiba-inu --name "柴犬" --name-en "Shiba Inu" --ca
 ## 路线图
 
 ```
-Phase 0/1  基础框架 + 灰盒验证        ← 当前
-Phase 2    数据驱动打通
-Phase 3    交互系统（抚摸 / 食物 / 球）
-Phase 4    情绪与需求系统
-Phase 5    伯恩山真实美术接入
-Phase 6    第二只真实犬种            ★ 架构验收关口
-Phase 7    档案系统 + Electron / 触摸适配
+M1  引擎骨架 + 灰盒验证              ✅ 已完成
+M2  The First Connection            ✅ 已完成
+     一个房间 · 摸它 · 羁绊 + 情绪
+M3  拖拽：🍖 ⚽ 🥣 三个东西           ← 下一步
+     拖到嘴边 → 吃 / 拖到地上 → 闻 → 决定 / 拖到碗 → 走过去吃
+M4  Personality：真正体现犬种差异
+     拖球 → 边牧疯狂玩 / 伯恩山玩一会就回来
+M5  真实美术：灰盒全部替换
+     Idle / Walk / Sit / Eat / Sleep
+M6  第二只狗：边牧                   ★ 架构验收关口
+     若完全不用改 core/ → 架构成功
 ```
 
-**Phase 6 是整个架构的验收关口**：
+### 明确不做的事
+
+按项目要求，以下都**不在**当前阶段：
+
+❌ Memory · ❌ AI · ❌ 成长 · ❌ 数据库存档 · ❌ 多房间 · ❌ 多狗
+
+以后都有时间。
+
+**Phase M6 是整个架构的验收关口**：
 如果加边牧需要修改 `src/core/`，说明架构有问题，必须回头改，而不是绕过。
 
 ---
@@ -202,6 +242,8 @@ Phase 7    档案系统 + Electron / 触摸适配
 提交前请确认：
 
 - [ ] `npm run verify` 通过
+- [ ] `npm run calibrate` 全部判定正确
+- [ ] `npm run pet -- <id>` 无失败项
 - [ ] 若新增犬种，`git diff --stat` 中 `src/core/**` 为空
 
 ---

@@ -25,6 +25,11 @@ import type {
   CognitionConfig,
   ResourcesConfig,
   PersonalityConfig,
+  AffectionConfig,
+  RoomConfig,
+  BondingConfig,
+  PettingConfig,
+  AnnoyanceConfig,
 } from './types';
 import { SPECIES_SCHEMA_VERSION, BEHAVIORS_SCHEMA_VERSION } from './types';
 
@@ -108,6 +113,98 @@ const DEFAULT_RESOURCES: ResourcesConfig = {
   animationClips: {},
 };
 
+// ─────────────────────────────────────────────────────────────
+// Milestone 2 默认值：羁绊 / 抚摸 / 骚扰 / 房间
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * 默认羁绊阶梯 —— Milestone 2 的核心体验。
+ *
+ * 这是项目要求的"五次抚摸"序列：
+ *   看向 → 靠近 → 坐下 → 摇尾巴 → 闭眼
+ *
+ * ★ 关键设计：阶梯是**连续量**驱动的，不是点击计数器。
+ *   羁绊值会因冷落而衰减，所以"它认识我了"必须靠持续陪伴维持。
+ *
+ * 数值含义：gainPerPet = 0.22，因此约 5 次抚摸走完阶梯。
+ * 但每次抚摸的增益会随羁绊升高而**递减**（边际效应），
+ * 避免"点满即永久满级"的游戏感 —— 详见 BondSystem。
+ */
+const DEFAULT_BONDING: BondingConfig = {
+  gainPerPet: 0.22,
+  // 每秒衰减 0.006 → 满羁绊约 2.8 分钟归零。
+  // 足够慢，让玩家在 30 秒的首次体验里不会感到"倒退"；
+  // 又足够快，让"离开一会儿回来它就没那么热情了"可以被察觉。
+  decayPerSec: 0.006,
+  penaltyPerSecWhenAnnoyed: 0.05,
+  ladder: [
+    {
+      atBond: 0.0,
+      state: 'LookAt',
+      label: { zh: '看向玩家', en: 'Looks at you' },
+    },
+    {
+      atBond: 0.32,
+      state: 'Approach',
+      label: { zh: '靠近一点', en: 'Comes closer' },
+    },
+    {
+      atBond: 0.55,
+      state: 'Sit',
+      label: { zh: '坐到你旁边', en: 'Sits beside you' },
+    },
+    {
+      atBond: 0.76,
+      state: 'WagTail',
+      label: { zh: '摇尾巴', en: 'Wags tail' },
+    },
+    {
+      atBond: 0.93,
+      state: 'PetEnjoy',
+      label: { zh: '闭眼享受', en: 'Closes eyes, content' },
+    },
+  ],
+  requiresTouchToNotice: true,
+};
+
+const DEFAULT_PETTING: PettingConfig = {
+  minEffectiveMs: 90,
+  pleasureBase: 0.35,
+  arousalGain: 0.28,
+  tolerance: 3,
+};
+
+const DEFAULT_ANNOYANCE: AnnoyanceConfig = {
+  windowMs: 2600,
+  threshold: 4,
+  annoyancePerExcess: 0.3,
+  decayPerSec: 0.25,
+  leaveAt: 1.0,
+  sulkMs: 5200,
+};
+
+const DEFAULT_AFFECTION: AffectionConfig = {
+  bonding: DEFAULT_BONDING,
+  petting: DEFAULT_PETTING,
+  annoyance: DEFAULT_ANNOYANCE,
+};
+
+/**
+ * 默认房间。
+ *
+ * floorLineRatio 0.74 表示下方 26% 是地板 ——
+ * 这个比例让狗有足够空间走动，同时地板占据画面下方形成"房间"的感觉。
+ */
+const DEFAULT_ROOM: RoomConfig = {
+  floorLineRatio: 0.74,
+  floorColor: 0x1e1e26,
+  floorShadeColor: 0x16161c,
+  wallColor: 0x121218,
+  showGrid: false,
+  // 玩家锚点：画面下方中央，代表"玩家坐在屏幕外看着狗"
+  playerAnchor: { xRatio: 0.5, yRatio: 1.15 },
+};
+
 /** 中性兜底犬种。仅用于类型与默认值推导，不出现在犬种清单中 */
 export const DEFAULT_SPECIES: SpeciesData = {
   $schema: SPECIES_SCHEMA_VERSION,
@@ -124,6 +221,8 @@ export const DEFAULT_SPECIES: SpeciesData = {
   preferences: DEFAULT_PREFERENCES,
   locomotion: DEFAULT_LOCOMOTION,
   resources: DEFAULT_RESOURCES,
+  affection: DEFAULT_AFFECTION,
+  room: DEFAULT_ROOM,
 };
 
 /**
@@ -133,6 +232,27 @@ export const DEFAULT_SPECIES: SpeciesData = {
  */
 export const CORE_STATE_IDS = ['Idle', 'Walk', 'Sit', 'Sleep'] as const;
 export type CoreStateId = (typeof CORE_STATE_IDS)[number];
+
+/**
+ * Milestone 2 新增的交互状态。
+ *
+ * ★ 为什么这些是「通用状态」而不是犬种专属：
+ *   LookAt / Approach / PetEnjoy / Annoyed / Retreat 描述的是
+ *   任何狗都会有的**互动姿态**，差异在于触发阈值与持续时间 ——
+ *   那些全部来自 JSON。因此它们属于引擎，不属于犬种。
+ */
+export const INTERACTION_STATE_IDS = [
+  'LookAt',
+  'Approach',
+  'WagTail',
+  'PetEnjoy',
+  'Annoyed',
+  'Retreat',
+] as const;
+export type InteractionStateId = (typeof INTERACTION_STATE_IDS)[number];
+
+/** 全部核心状态（通用行为 + 互动姿态） */
+export const ALL_CORE_STATE_IDS = [...CORE_STATE_IDS, ...INTERACTION_STATE_IDS] as const;
 
 /**
  * 中性行为权重。
@@ -164,6 +284,38 @@ export const DEFAULT_BEHAVIORS: BehaviorsData = {
   interactionResponse: {},
   microBehaviors: [],
   extraRandomness: 0,
+
+  // ── Milestone 2 默认：抚摸与骚扰的回应分布 ──
+  //
+  // 这两个表决定"被摸时怎么表现"。默认值是**中性犬**：
+  // 大部分时候接受，偶尔转头，极少走开。
+  // 犬种通过 behaviors.json 覆盖即可表达性格（柴犬回避权重更高、
+  // 边牧几乎从不回避等），无需改代码。
+  pettingResponse: {
+    weights: {
+      accept: 62, // 接受，继续享受
+      leanIn: 18, // 主动贴近（依恋的狗权重更高）
+      lookUp: 14, // 抬头看你
+      pullAway: 6, // 轻微躲开
+    },
+    cooldownMs: 0,
+  },
+
+  annoyanceResponse: {
+    weights: {
+      turnHeadAway: 48, // 轻度：把头转开
+      standUp: 30, // 中度：起身
+      walkAway: 22, // 重度：走开
+    },
+    cooldownMs: 0,
+  },
+
+  annoyanceBias: {
+    // 温柔的狗更能忍受反复抚摸
+    gentleness: { sensitivity: -1.2 },
+    // 固执的狗更容易被惹烦
+    stubbornness: { sensitivity: 0.9 },
+  },
 };
 
 /** 计算灰盒方块的最终像素尺寸 */

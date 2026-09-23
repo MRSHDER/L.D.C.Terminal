@@ -1,0 +1,52 @@
+{
+  "$schema": "ldc/behaviors/v1",
+  "id": "graybox-shy",
+
+  "stateWeights": {
+    "Idle": 44,
+    "Walk": 14,
+    "Sit": 26,
+    "Sleep": 16
+  },
+
+  "personalityBias": {
+    "Walk": { "energy": { "sensitivity": 1.2 } },
+    "Sit": { "shyness": { "sensitivity": 0.9 } },
+    "Sleep": { "energy": { "sensitivity": -1.3 } },
+    "Idle": { "shyness": { "sensitivity": 0.6 } }
+  },
+
+  "interactionResponse": {},
+
+  "pettingResponse": {
+    "weights": {
+      "accept": 40,
+      "leanIn": 12,
+      "lookUp": 26,
+      "pullAway": 22
+    },
+    "cooldownMs": 0
+  },
+
+  "annoyanceResponse": {
+    "weights": {
+      "turnHeadAway": 34,
+      "standUp": 26,
+      "walkAway": 40
+    },
+    "cooldownMs": 0
+  },
+
+  "annoyanceBias": {
+    "gentleness": { "sensitivity": -0.6 },
+    "shyness": { "sensitivity": 1.4 },
+    "stubbornness": { "sensitivity": 0.5 }
+  },
+
+  "microBehaviors": [
+    { "id": "earTwitch", "chancePerMin": 2 },
+    { "id": "blink", "chancePerMin": 10 }
+  ],
+
+  "extraRandomness": 0.05
+}

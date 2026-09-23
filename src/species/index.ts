@@ -25,6 +25,9 @@ import grayboxBehaviors from './graybox/behaviors.json';
 import grayboxSwiftSpecies from './graybox-swift/species.json';
 import grayboxSwiftBehaviors from './graybox-swift/behaviors.json';
 
+import grayboxShySpecies from './graybox-shy/species.json';
+import grayboxShyBehaviors from './graybox-shy/behaviors.json';
+
 /**
  * 全部已注册犬种。
  * 顺序决定默认犬种（列表首项）。
@@ -39,6 +42,11 @@ export const SPECIES_SOURCES: readonly SpeciesSource[] = [
     id: 'graybox-swift',
     species: grayboxSwiftSpecies,
     behaviors: grayboxSwiftBehaviors,
+  },
+  {
+    id: 'graybox-shy',
+    species: grayboxShySpecies,
+    behaviors: grayboxShyBehaviors,
   },
 ];
 

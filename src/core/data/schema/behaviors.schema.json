@@ -79,6 +79,62 @@
       }
     },
 
-    "extraRandomness": { "type": "number", "minimum": 0, "maximum": 1, "default": 0 }
+    "extraRandomness": { "type": "number", "minimum": 0, "maximum": 1, "default": 0 },
+
+    "pettingResponse": {
+      "description": "Milestone 2：被抚摸时的回应权重分布。",
+      "$ref": "#/definitions/interactionResponse"
+    },
+
+    "annoyanceResponse": {
+      "description": "Milestone 2：被骚扰时的反应权重分布。",
+      "$ref": "#/definitions/interactionResponse"
+    },
+
+    "annoyanceBias": {
+      "description": "Milestone 2：性格维度对烦躁阈值的修正。",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["sensitivity"],
+        "additionalProperties": false,
+        "properties": {
+          "sensitivity": { "type": "number", "minimum": -4, "maximum": 4 }
+        }
+      }
+    }
+  },
+
+  "definitions": {
+    "interactionResponse": {
+      "type": "object",
+      "required": ["weights"],
+      "additionalProperties": false,
+      "properties": {
+        "weights": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "type": "number", "minimum": 0 }
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["when"],
+            "additionalProperties": false,
+            "properties": {
+              "when": { "type": "string", "minLength": 1 },
+              "weights": {
+                "type": "object",
+                "additionalProperties": { "type": "number", "minimum": 0 }
+              },
+              "randomness": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        },
+        "cooldownMs": { "type": "number", "minimum": 0 },
+        "requiresAttention": { "type": "boolean" }
+      }
+    }
   }
 }

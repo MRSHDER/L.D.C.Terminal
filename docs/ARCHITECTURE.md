@@ -6,21 +6,16 @@
 
 ## 当前阶段
 
-**Phase 0 / Phase 1：基础框架 + 灰盒验证**
+**Milestone 2：The First Connection**
 
-已完成：
+| 阶段 | 内容 | 状态 |
+|---|---|---|
+| M1 | 引擎骨架：GameLoop / EventBus / SpeciesLoader / FSM / Animation / 灰盒渲染 | ✅ |
+| M2 | 羁绊系统 · 情绪系统 · 手势识别 · 六个互动状态 · 房间 | ✅ |
 
-- Vite + React + TypeScript + PixiJS 工程化
-- 固定步长 GameLoop
-- 类型安全 EventBus
-- 数据驱动 SpeciesLoader + JSON Schema 校验
-- 层级状态机（HFSM）
-- 动画系统 + 过程动画（呼吸 / 眨眼 / 尾巴 / 耳朵 / 浮动）
-- 灰盒渲染（Pixi 分层精灵）
-- 调试调参界面
+**尚未开始**：食物 / 球 / 碗（M3）、犬种人格差异（M4）、真实美术（M5）、第二只狗（M6）。
 
-**尚未开始**：犬类业务、食物、球、交互、情绪、数据库。
-遵照项目要求，Phase 0/1 只建立可长期维护的框架。
+> M2 的详细机制、标定数据与踩坑记录见 **[MILESTONE_2.md](MILESTONE_2.md)**。
 
 ---
 
@@ -43,6 +38,12 @@
 8~12 FPS 是**意图**，不是性能妥协。
 呼吸 / 眨眼 / 耳朵 / 尾巴由代码在低帧率节拍上叠加，不占素材。
 
+### 4. （M2 新增）情绪驱动表现，而非状态驱动动画
+
+状态只需修改情绪（如 `WagTail` 拉高 arousal），
+动画层从「情绪修饰表」读取参数自动跟随 ——
+因此"被摸时尾巴摆得更欢"不需要为每个状态写动画。
+
 ---
 
 ## 目录结构
@@ -54,53 +55,54 @@ src/
 │   │   ├── types.ts          所有数据结构的单一真相源
 │   │   ├── defaults.ts       DEFAULT_SPECIES / DEFAULT_BEHAVIORS
 │   │   ├── merge.ts          深合并 / 深冻结 / 差异比对
-│   │   ├── validate.ts       运行时轻量校验
+│   │   ├── validate.ts       运行时轻量校验（含语义陷阱检查）
 │   │   ├── SpeciesLoader.ts  加载 → 合并 → 校验 → 冻结
 │   │   ├── SpeciesRegistry.ts 犬种注册表
 │   │   └── schema/           JSON Schema（构建期 ajv 校验用）
 │   ├── event/                事件总线
-│   │   ├── events.ts         事件契约（单一真相源）
-│   │   └── EventBus.ts       类型安全实现
 │   ├── fsm/                  层级状态机
 │   │   ├── StateMachine.ts   通用 HFSM + 效用裁决
 │   │   ├── transitions.ts    通用迁移表 + 准入守卫
-│   │   └── states/coreStates.ts  Idle / Walk / Sit / Sleep
+│   │   ├── interactionTransitions.ts  ★ M2 羁绊阶梯裁决
+│   │   └── states/
+│   │       ├── coreStates.ts         Idle / Walk / Sit / Sleep
+│   │       └── interactionStates.ts  ★ M2 六个互动姿态
+│   ├── affection/            ★ M2 情感层
+│   │   ├── BondSystem.ts     羁绊阶梯（"它认识我吗"）
+│   │   └── MoodSystem.ts     情绪四量 + 骚扰时间窗口
+│   ├── interaction/          ★ M2 输入层
+│   │   ├── PointerAdapter.ts     鼠标/触摸/笔 归一化
+│   │   ├── GestureRecognizer.ts  点击/长按/连点识别
+│   │   └── InteractionSystem.ts  命中检测 + 抚摸会话
 │   ├── animation/            动画系统
-│   │   ├── FrameClock.ts     像素节拍器（低帧率量化）
-│   │   ├── oscillators.ts    正弦 / 噪声 / 脉冲 / 随机间隔
-│   │   ├── ProceduralLayer.ts 过程动画（呼吸眨眼尾巴耳朵）
-│   │   └── AnimationSystem.ts 状态 → 动画 → RenderState
 │   ├── render/               渲染（唯一接触 Pixi 的地方）
-│   │   ├── GrayboxRenderer.ts 灰盒分层渲染器
-│   │   └── palette.ts        黑白灰 + 天蓝强调色
 │   ├── world/                世界与工具
 │   │   ├── World.ts          子系统编排 + 唯一逻辑入口
-│   │   ├── Vector2.ts        向量工具
-│   │   └── Rng.ts            可播种随机数
+│   │   └── blackboardAccess.ts ★ M2 系统引用交换区
 │   └── time/
 │       └── GameLoop.ts       固定步长循环
 │
 ├── species/                  ★ 数据扩展区：只放 JSON
 │   ├── index.ts              注册表（唯一需要改的一行）
-│   ├── graybox/              灰盒基准体
-│   └── graybox-swift/        灰盒敏捷型（证明"加犬种不改代码"）
+│   ├── graybox/              中性基准体
+│   ├── graybox-shy/          慢热害羞型
+│   └── graybox-swift/        敏捷亢奋型
 │
 ├── app/                      React 层（薄）
-│   ├── Stage.tsx             舞台容器
-│   ├── hooks/useEngine.ts    引擎生命周期绑定
-│   └── ui/                   快照 / 诊断 / 调参面板
-│
 └── main.tsx
 
 tools/
 ├── validate-species.ts       构建期 JSON Schema 校验
 ├── simulate.ts               无头模拟器
 ├── tune-transitions.ts       ★ 迁移标定报告
+├── pet-test.ts               ★ M2 互动验证（六场景）
+├── calibrate-annoyance.ts    ★ M2 骚扰阈值标定
 └── new-species.ts            犬种脚手架生成
 
 docs/
 ├── ARCHITECTURE.md           本文档
-└── SPECIES_AUTHORING.md      新增犬种指南
+├── SPECIES_AUTHORING.md      新增犬种指南
+└── MILESTONE_2.md            ★ M2 机制与标定记录
 ```
 
 ---
@@ -401,12 +403,21 @@ FSM 的分值是「基础峰值 × patience 窗口 × 性格乘子 × 节奏因�
 ## 后续阶段
 
 ```
-Phase 2  数据驱动打通          ← 当前已完成大半（权重系统已运作）
-Phase 3  交互系统              手势识别 / 抚摸 / 食物 / 球
-Phase 4  情绪与需求            MoodVector / NeedSystem / ModifierTable
-Phase 5  真实美术接入          伯恩山 atlas + 关键帧动画
-Phase 6  第二只真实犬种        ★ 架构验收关口
-Phase 7  档案系统 + Electron / 触摸适配
+M1  引擎骨架 + 灰盒验证              ✅ 已完成
+M2  The First Connection            ✅ 已完成
+M3  拖拽：🍖 ⚽ 🥣                    ← 下一步
+M4  Personality：真正体现犬种差异
+M5  真实美术接入
+M6  第二只真实犬种                   ★ 架构验收关口
+M7  档案系统 + Electron / 触摸适配
 ```
 
-**Phase 3 起必须遵守**：任何新能力先用灰盒验证管线，再接入正式美术。
+**M6 是整个架构的验收关口**：
+如果加边牧需要修改 `src/core/`，说明架构有问题，必须回头改，而不是绕过。
+
+### M2 为 M3 铺好的路
+
+- `PointerAdapter` 已支持多指（`primaryOnly: false` 即可接拖拽）
+- `GestureRecognizer` 已能识别 `stroke`（拖拽轨迹）
+- `InteractionSystem` 的命中检测可直接复用于"食物落在哪"
+- 情绪修饰表已能驱动"吃东西时的兴奋表现"

@@ -15,9 +15,80 @@ import { World } from '@core/world/World';
 import { GameLoop } from '@core/time/GameLoop';
 import { GrayboxRenderer } from '@core/render/GrayboxRenderer';
 import { SpeciesRegistry } from '@core/data/SpeciesRegistry';
+import { PointerAdapter, type PointerSample } from '@core/interaction/PointerAdapter';
+import { GestureRecognizer } from '@core/interaction/GestureRecognizer';
 import { SPECIES_SOURCES, DEFAULT_SPECIES_ID } from '@species/index';
 import type { LoadedSpecies } from '@core/data/SpeciesLoader';
 import type { StateId } from '@core/event/events';
+
+// ─────────────────────────────────────────────────────────────
+// 输入队列
+//
+// 浏览器指针回调发生在 rAF 之外的任意时刻，
+// 而引擎必须按固定步长消费输入才能保证确定性。
+// 因此输入先进队列，由逻辑帧统一 drain。
+// ─────────────────────────────────────────────────────────────
+
+type QueuedInput =
+  | { kind: 'down'; sample: PointerSample }
+  | { kind: 'move'; sample: PointerSample }
+  | { kind: 'up'; sample: PointerSample }
+  | { kind: 'cancel'; sample: PointerSample };
+
+/**
+ * 消费输入队列并驱动世界。
+ *
+ * ★ 设计要点：抚摸的"结算"完全由 World.update() 内部的
+ *   updateInteraction() 按**逻辑帧**完成，输入层只负责维护
+ *   "指针是否按在狗身上"这一状态。
+ *
+ *   为什么不让输入层直接结算：
+ *     输入回调发生在 rAF 之外，若在那里累加时长，
+ *     同一段按压在不同刷新率下会结算出不同的次数 ——
+ *     行为变得不可复现，且"摸多久 = 多亲密"的关系会漂移。
+ *     把时间推进权交给逻辑帧，是保证确定性的关键。
+ *
+ * GestureRecognizer 仍然保留，因为它提供了
+ *   rapid（连点）判定所需的**抬手时刻**信息，
+ *   而这正是"骚扰"机制的时间基准。
+ */
+function drainInputs(world: World, queue: QueuedInput[], recognizer: GestureRecognizer): void {
+  for (let i = 0; i < queue.length; i++) {
+    const ev = queue[i]!;
+    switch (ev.kind) {
+      case 'down':
+        recognizer.onDown(ev.sample, world.elapsed);
+        world.pointerDown(
+          ev.sample.x,
+          ev.sample.y,
+          world.elapsed,
+          ev.sample.pointerType !== 'mouse',
+        );
+        break;
+
+      case 'move':
+        recognizer.onMove(ev.sample, world.elapsed);
+        world.pointerMove(ev.sample.x, ev.sample.y, ev.sample.pointerType !== 'mouse');
+        break;
+
+      case 'up':
+        recognizer.onUp(ev.sample, world.elapsed);
+        world.pointerUp(world.elapsed);
+        break;
+
+      case 'cancel':
+        recognizer.onCancel(ev.sample);
+        world.pointerUp(world.elapsed);
+        break;
+    }
+  }
+
+  queue.length = 0;
+
+  // 即使没有新事件也要推进 ——
+  // 它负责在"按住不动"时持续产生抚摸心跳（闭眼享受依赖这个）。
+  recognizer.update(world.elapsed);
+}
 
 /** 推送给 React 的只读快照。刻意保持极小，避免 UI 开销 */
 export interface EngineSnapshot {
@@ -91,6 +162,11 @@ export function useEngine(designWidth: number, designHeight: number): UseEngineR
   const loopRef = useRef<GameLoop | null>(null);
   const rendererRef = useRef<GrayboxRenderer | null>(null);
   const busRef = useRef<EventBus | null>(null);
+
+  // Milestone 2：输入管线
+  const pointerAdapterRef = useRef<PointerAdapter | null>(null);
+  const gestureRecognizerRef = useRef<GestureRecognizer | null>(null);
+  const inputQueueRef = useRef<QueuedInput[] | null>(null);
 
   const [snapshot, setSnapshot] = useState<EngineSnapshot>(EMPTY_SNAPSHOT);
   const [isPaused, setIsPaused] = useState(false);
@@ -205,7 +281,16 @@ export function useEngine(designWidth: number, designHeight: number): UseEngineR
     });
 
     const loop = new GameLoop({
-      update: (dtSec) => world.update(dtSec),
+      update: (dtSec) => {
+        // ★ 先消费输入队列，再推进世界。
+        //   顺序不能反：如果先 update 再消费输入，
+        //   玩家按下后要等下一帧才被世界感知（多 16ms 延迟）。
+        //   在 30 秒的首次体验里，这种"粘滞感"会被察觉。
+        const q = inputQueueRef.current;
+        const rec = gestureRecognizerRef.current;
+        if (q && rec) drainInputs(world, q, rec);
+        world.update(dtSec);
+      },
       render: () => {
         renderer.render(world.getRenderState());
         renderer.renderFrame();
@@ -215,6 +300,31 @@ export function useEngine(designWidth: number, designHeight: number): UseEngineR
       },
     });
     loopRef.current = loop;
+
+    // ── Milestone 2：输入管线 ──
+    //
+    // PointerAdapter  鼠标/触摸归一化
+    //      ↓
+    // GestureRecognizer  点击 / 长按 / 连点识别
+    //      ↓
+    // inputQueue     事件缓冲（回调在 rAF 之外，消费在逻辑帧内）
+    //      ↓
+    // World          狗的实际反应
+    //
+    // ★ 为什么要用队列而不是在回调里直接调 world：
+    //   pointer 回调发生在 rAF 之外（可能在两次逻辑帧之间），
+    //   直接调用会破坏"固定步长"的确定性 —— 同一段输入在不同刷新率下
+    //   会产生不同的狗行为。入队后由逻辑帧统一消费，才能保证可复现。
+    const inputQueue: QueuedInput[] = [];
+    inputQueueRef.current = inputQueue;
+
+    const recognizer = new GestureRecognizer({
+      // 手势结果不直接驱动世界 —— 抚摸的结算由 World 按逻辑帧完成。
+      // 这里保留回调是为了将来接入"轻点提示"等表现（Milestone 3+）。
+      onGesture: () => {},
+      onPettingTick: () => {},
+    });
+    gestureRecognizerRef.current = recognizer;
 
     void (async () => {
       try {
@@ -237,6 +347,27 @@ export function useEngine(designWidth: number, designHeight: number): UseEngineR
         pushSnapshot(initial);
         loop.start();
         bus.emit('app:ready', { at: performance.now() });
+
+        // ★ 输入适配器必须在渲染器 init 之后创建 ——
+        //   它需要绑定到 Pixi 的 canvas 元素上（而不是外层容器），
+        //   这样才能拿到正确的坐标系，并把触摸事件限制在画布内。
+        const canvasEl = containerRef.current?.querySelector('canvas') ?? containerRef.current;
+        if (canvasEl) {
+          const adapter = new PointerAdapter(
+            canvasEl as HTMLElement,
+            {
+              onDown: (s) => {
+                inputQueue.push({ kind: 'down', sample: s });
+              },
+              onMove: (s) => inputQueue.push({ kind: 'move', sample: s }),
+              onUp: (s) => inputQueue.push({ kind: 'up', sample: s }),
+              onCancel: (s) => inputQueue.push({ kind: 'cancel', sample: s }),
+            },
+            { primaryOnly: true },
+          );
+          adapter.setDesignSize(designWidth, designHeight);
+          pointerAdapterRef.current = adapter;
+        }
       } catch (err) {
         if (disposed) return;
         console.error('[LDC] 渲染器初始化失败', err);
@@ -253,6 +384,7 @@ export function useEngine(designWidth: number, designHeight: number): UseEngineR
       offDecision();
       offSample();
       loop.stop();
+      pointerAdapterRef.current?.dispose();
       world.dispose();
       renderer.destroy();
       bus.clear();
@@ -261,6 +393,9 @@ export function useEngine(designWidth: number, designHeight: number): UseEngineR
       rendererRef.current = null;
       registryRef.current = null;
       busRef.current = null;
+      pointerAdapterRef.current = null;
+      gestureRecognizerRef.current = null;
+      inputQueueRef.current = null;
     };
     // 只在尺寸变化时重建（尺寸变更属于重初始化场景）
   }, [designWidth, designHeight]);

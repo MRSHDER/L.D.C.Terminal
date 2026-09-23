@@ -1,0 +1,107 @@
+{
+  "$schema": "ldc/species/v1",
+  "version": "1.0.0",
+  "id": "graybox-shy",
+  "displayName": {
+    "zh": "灰盒·慢热型",
+    "en": "Graybox Shy"
+  },
+  "catalogNo": "LDC-003",
+  "description": {
+    "zh": "唯一目的是验证「同一套代码，换 JSON 就是另一只狗」。它需要更长时间建立信任，容易被吓到，但一旦亲近就非常黏人。",
+    "en": "Exists to prove that one codebase plus different JSON equals a different animal. Slow to trust, easily startled, but deeply attached once bonded."
+  },
+
+  "physical": {
+    "bodyScale": 0.92,
+    "hitbox": { "w": 44, "h": 33, "anchorY": 0.9 },
+    "grayboxTint": 16777215
+  },
+
+  "personality": {
+    "temperament": {
+      "gentleness": 0.85,
+      "energy": 0.35,
+      "curiosity": 0.3,
+      "stubbornness": 0.4,
+      "shyness": 0.88,
+      "clinginess": 0.8,
+      "playfulness": 0.25,
+      "obedience": 0.5,
+      "randomness": 0.3
+    },
+    "traits": ["shy", "slow-warming", "devoted"]
+  },
+
+  "cognition": {
+    "decisionIntervalMs": 780,
+    "reactionDelayMs": [500, 1500],
+    "attentionSpanMs": 7000,
+    "memorySpanMs": 45000,
+    "learningRate": 0.06
+  },
+
+  "animation": {
+    "targetFps": 8,
+    "breath": { "freqHz": 0.19, "ampPx": 1.4, "bodyScaleY": 0.019 },
+    "blink": { "baseIntervalMs": 5200, "varianceMs": 2800, "durationMs": 160 },
+    "tail": { "segments": 3, "baseAngleDeg": 3, "maxSwingDeg": 12, "delayPerSegMs": 110 },
+    "ear": { "jitterDeg": 3, "triggerBias": 0.15 },
+    "float": { "ampPx": 0.7, "freqHz": 0.11 },
+    "transitions": {},
+    "defaultTransitionMs": 320
+  },
+
+  "locomotion": {
+    "walkSpeedPx": 22,
+    "runSpeedPx": 48,
+    "turnRateDeg": 150,
+    "idleWanderRadiusPx": 34,
+    "wanderChancePerMin": 1.6,
+    "arriveThresholdPx": 4
+  },
+
+  "resources": {
+    "assetRoot": "",
+    "animationClips": {}
+  },
+
+  "affection": {
+    "bonding": {
+      "gainPerPet": 0.11,
+      "decayPerSec": 0.009,
+      "penaltyPerSecWhenAnnoyed": 0.09,
+      "requiresTouchToNotice": true,
+      "ladder": [
+        { "atBond": 0.0, "state": "LookAt", "label": { "zh": "远远看着你", "en": "Watches from afar" } },
+        { "atBond": 0.4, "state": "Approach", "label": { "zh": "犹豫着靠近", "en": "Hesitantly approaches" } },
+        { "atBond": 0.66, "state": "Sit", "label": { "zh": "终于坐下来", "en": "Finally sits down" } },
+        { "atBond": 0.86, "state": "WagTail", "label": { "zh": "轻轻摇尾巴", "en": "Tail wags softly" } },
+        { "atBond": 0.96, "state": "PetEnjoy", "label": { "zh": "完全信任", "en": "Fully trusts you" } }
+      ]
+    },
+    "petting": {
+      "minEffectiveMs": 140,
+      "pleasureBase": 0.4,
+      "arousalGain": 0.18,
+      "tolerance": 2
+    },
+    "annoyance": {
+      "windowMs": 3600,
+      "threshold": 6,
+      "annoyancePerExcess": 0.4,
+      "decayPerSec": 0.16,
+      "leaveAt": 0.7,
+      "sulkMs": 8200
+    }
+  },
+
+  "room": {
+    "floorLineRatio": 0.74,
+    "floorColor": 1973798,
+    "floorShadeColor": 1447452,
+    "wallColor": 1184280,
+    "showGrid": false,
+    "playerAnchor": { "xRatio": 0.5, "yRatio": 1.15 }
+  }
+}

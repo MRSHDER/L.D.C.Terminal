@@ -154,14 +154,27 @@ export class GrayboxRenderer {
     this.app.stage.addChild(this.stage);
   }
 
-  /** 设置当前犬种（决定灰盒尺寸、尾巴节数、颜色） */
+  /** 设置当前犬种（决定灰盒尺寸、尾巴节数、颜色、房间外观） */
   setSpecies(species: SpeciesData): void {
     const segmentsChanged = this.species?.animation.tail.segments !== species.animation.tail.segments;
+    const roomChanged =
+      this.species?.room.floorLineRatio !== species.room.floorLineRatio ||
+      this.species?.room.floorColor !== species.room.floorColor ||
+      this.species?.room.wallColor !== species.room.wallColor ||
+      this.species?.room.showGrid !== species.room.showGrid;
+
     this.species = species;
+
     if (segmentsChanged || this.tailSegments.length === 0) {
       this.rebuildTailSegments(species.animation.tail.segments);
     }
     this.redrawParts(species);
+
+    // ★ 房间外观也来自 species 数据，因此换犬种时房间可能一起变。
+    //   这一步只在实际变化时执行 —— 避免每次切换都重绘整个背景。
+    if (roomChanged) {
+      this.drawStaticBackground();
+    }
   }
 
   private rebuildTailSegments(count: number): void {
@@ -176,18 +189,54 @@ export class GrayboxRenderer {
     }
   }
 
+  /**
+   * 绘制房间（背景 + 地板）。
+   *
+   * ★ Milestone 2 的变化：从"网格调试背景"改为**一个房间**。
+   *
+   *   去掉网格是刻意的：项目要求"没有 UI、没有菜单、没有按钮"。
+   *   网格线会让画面读起来像编辑器，而不是"它待着的房间"。
+   *
+   *   房间只有两个平面：
+   *     墙面（上）—— 略亮，暗示空间
+   *     地板（下）—— 略暗，狗站在这里
+   *   交界处画一条 1px 的暗线作为"墙脚线"，这比渐变更像素风。
+   *
+   *   房间配色全部来自 species.room（数据驱动），
+   *   因此不同犬种可以有不同房间而不改代码。
+   */
   private drawStaticBackground(): void {
     const { designWidth: w, designHeight: h } = this.options;
+    const room = this.species?.room;
+
+    const wallColor = room?.wallColor ?? PALETTE.bgMid;
+    const floorColor = room?.floorColor ?? PALETTE.bgSoft;
+    const floorShade = room?.floorShadeColor ?? PALETTE.bgDeep;
+    const floorLineRatio = room?.floorLineRatio ?? 0.72;
+
+    const floorY = Math.round(h * floorLineRatio);
 
     this.background.clear();
-    this.background.rect(0, 0, w, h).fill({ color: PALETTE.bgMid });
-    // 地面色带：给灰盒一个"站的地方"，避免悬空感
-    this.background
-      .rect(0, Math.round(h * 0.72), w, h - Math.round(h * 0.72))
-      .fill({ color: PALETTE.bgSoft });
 
+    // 墙面
+    this.background.rect(0, 0, w, floorY).fill({ color: wallColor });
+
+    // 墙脚线：1px 硬边，像素风的分界表达
+    this.background.rect(0, floorY, w, 1).fill({ color: floorShade });
+
+    // 地板
+    this.background.rect(0, floorY + 1, w, h - floorY - 1).fill({ color: floorColor });
+
+    // 地板远处的暗带：制造纵深，让狗"站在房间里"而非贴着墙
+    const farBandH = Math.max(2, Math.round((h - floorY) * 0.18));
+    this.background
+      .rect(0, floorY + 1, w, farBandH)
+      .fill({ color: floorShade });
+
+    // 网格仅在显式开启时绘制（调试用，正式体验应为 false）
     this.grid.clear();
-    if (!this.options.showGrid) return;
+    if (!room?.showGrid) return;
+
     const step = 24;
     for (let x = 0; x <= w; x += step) {
       this.grid.rect(x, 0, 1, h).fill({ color: PALETTE.grid });
@@ -424,8 +473,14 @@ export class GrayboxRenderer {
     const eyeW = Math.max(2, Math.round(headW * 0.16));
     const eyeH = Math.max(2, Math.round(headH * 0.22));
 
-    // 睡眠时强制闭眼，忽略眨眼周期
-    const closure = rs.pose.sleeping ? 1 : rs.procedural.eyeClosure;
+    // ★ 闭眼程度取「眨眼反射」与「情绪性闭眼」的最大值。
+    //   取 max 而非相加，理由：
+    //     眨眼是瞬间的（~140ms），情绪闭眼是持续的（享受时一直闭着）。
+    //     两者重叠时应该保持"闭着"，而不是叠加成负值。
+    //   睡眠时强制全闭，忽略眨眼周期。
+    const closure = rs.pose.sleeping
+      ? 1
+      : Math.max(rs.procedural.eyeClosure, rs.pose.eyeClosure);
 
     const leftX = headX - eyeSpacing;
     const rightX = headX + eyeSpacing;
