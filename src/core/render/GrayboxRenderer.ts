@@ -1,6 +1,6 @@
 /**
  * L.D.C. — 渲染器（PixiJS）
- * 狗用调色板像素图在 canvas 上画出，不再嵌 base64 PNG。
+ * 狗使用独立精灵帧素材；渲染器只负责摆放和低帧选帧。
  */
 
 import {
@@ -15,12 +15,7 @@ import {
 import type { RenderState } from '../animation/AnimationSystem';
 import type { SpeciesData } from '../data/types';
 import { PALETTE } from './palette';
-import {
-  DOG_SPRITE_H,
-  DOG_SPRITE_PALETTE,
-  DOG_SPRITE_PIXELS,
-  DOG_SPRITE_W,
-} from './spriteDog';
+import { DOG_FRAME_H, DOG_FRAME_IMAGES, DOG_FRAME_W } from './spriteDogGenerated';
 
 export interface GrayboxRendererOptions {
   readonly designWidth: number;
@@ -29,34 +24,10 @@ export interface GrayboxRendererOptions {
   readonly showGrid?: boolean;
 }
 
-const IDLE_OFFSETS_Y = [0, -1, 0, 0] as const;
-const IDLE_SCALE_Y = [1, 0.985, 1, 1] as const;
-const WALK_OFFSETS_X = [0, 1, 0, -1, 0, 1] as const;
-const WALK_OFFSETS_Y = [0, -1, 0, -1, 0, 0] as const;
-const WALK_SCALE_Y = [1, 0.97, 1, 0.97, 1, 0.985] as const;
+const DOG_WALK_TEXTURE_INDEXES = [1, 2, 1, 2] as const;
 
-function textureFromPixelMap(): Texture {
-  const w = DOG_SPRITE_W;
-  const h = DOG_SPRITE_H;
-  const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('2d canvas unavailable');
-
-  const image = ctx.createImageData(w, h);
-  const pix = DOG_SPRITE_PIXELS;
-  for (let i = 0; i < pix.length; i++) {
-    const pal = DOG_SPRITE_PALETTE[parseInt(pix[i] ?? '0', 16)] ?? [0, 0, 0, 0];
-    const o = i * 4;
-    image.data[o] = pal[0];
-    image.data[o + 1] = pal[1];
-    image.data[o + 2] = pal[2];
-    image.data[o + 3] = pal[3];
-  }
-  ctx.putImageData(image, 0, 0);
-
-  const texture = Texture.from(canvas);
+function textureFromImage(src: string): Texture {
+  const texture = Texture.from(src);
   try {
     texture.source.scaleMode = 'nearest';
   } catch {
@@ -72,6 +43,7 @@ export class GrayboxRenderer {
   private readonly background: Graphics;
   private readonly grid: Graphics;
   private readonly shadowLayer: Graphics;
+  private readonly dogTextures = DOG_FRAME_IMAGES.map(textureFromImage);
   private dog: Sprite | null = null;
   private species: SpeciesData | null = null;
   private initialized = false;
@@ -105,7 +77,7 @@ export class GrayboxRenderer {
     this.app.canvas.style.height = '100%';
     this.app.ticker.stop();
 
-    const dog = new Sprite(textureFromPixelMap());
+    const dog = new Sprite(this.dogTextures[0] as Texture);
     dog.anchor.set(0.52, 0.92);
     dog.roundPixels = true;
     this.dog = dog;
@@ -155,23 +127,25 @@ export class GrayboxRenderer {
     const dir = facingRight ? 1 : -1;
     const moving = rs.moving || rs.speedRatio > 0.05;
     const frame = Math.max(0, rs.frameIndex);
-    const idleFrame = frame % IDLE_OFFSETS_Y.length;
-    const walkFrame = frame % WALK_OFFSETS_X.length;
+    const walkFrame = frame % DOG_WALK_TEXTURE_INDEXES.length;
+    const dogTexture = moving
+      ? this.dogTextures[DOG_WALK_TEXTURE_INDEXES[walkFrame] ?? 1] ?? this.dogTextures[0]
+      : this.dogTextures[0];
+    if (dogTexture && this.dog.texture !== dogTexture) this.dog.texture = dogTexture;
 
-    const scaleBase = 1.35;
+    const scaleBase = 1.06;
     const poseScaleY = Math.max(0.58, rs.pose.bodyHeightRatio || 1);
     const proceduralScaleY = p.scaleY || 1;
-    const animScaleY = moving ? WALK_SCALE_Y[walkFrame] ?? 1 : IDLE_SCALE_Y[idleFrame] ?? 1;
     const scaleX = dir * scaleBase * Math.abs(p.scaleX || 1);
-    const scaleY = scaleBase * poseScaleY * proceduralScaleY * animScaleY;
+    const scaleY = scaleBase * poseScaleY * proceduralScaleY;
 
-    const offsetX = moving ? (WALK_OFFSETS_X[walkFrame] ?? 0) * dir : 0;
-    const offsetY = moving ? WALK_OFFSETS_Y[walkFrame] ?? 0 : IDLE_OFFSETS_Y[idleFrame] ?? 0;
+    const offsetX = 0;
+    const offsetY = 0;
     const baseX = Math.round(rs.x + p.offsetX + offsetX);
     const baseY = Math.round(rs.y + p.offsetY + offsetY + rs.pose.groundOffsetPx);
 
-    const shadowW = moving ? 28 + Math.round(rs.speedRatio * 5) : 26;
-    const shadowH = moving ? 4 : 3;
+    const shadowW = moving ? 42 + Math.round(rs.speedRatio * 6) : 40;
+    const shadowH = moving ? 5 : 4;
     this.shadowLayer.clear();
     this.shadowLayer.ellipse(Math.round(rs.x), Math.round(rs.y + 2), shadowW, shadowH).fill({
       color: 0x000000,
@@ -195,7 +169,7 @@ export class GrayboxRenderer {
   }
 
   get bounds(): Rectangle {
-    return new Rectangle(0, 0, DOG_SPRITE_W, DOG_SPRITE_H);
+    return new Rectangle(0, 0, DOG_FRAME_W, DOG_FRAME_H);
   }
 
   destroy(): void {
@@ -223,3 +197,6 @@ export class GrayboxRenderer {
     return this.app.ticker;
   }
 }
+
+
+
