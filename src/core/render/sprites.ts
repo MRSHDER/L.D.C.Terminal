@@ -1,8 +1,13 @@
-import { DOG_SPRITE } from './spriteDog';
 import { ITEM_SPRITES } from './spriteItems';
 
+export {
+  DOG_SPRITE_W,
+  DOG_SPRITE_H,
+  DOG_SPRITE_PALETTE,
+  DOG_SPRITE_PIXELS,
+} from './spriteDog';
+
 export const SPRITES = {
-  dog: DOG_SPRITE,
   ...ITEM_SPRITES,
 } as const;
 

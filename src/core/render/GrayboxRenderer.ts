@@ -1,6 +1,6 @@
 /**
  * L.D.C. — 渲染器（PixiJS）
- * 狗用生成像素图。Pixi 8 不能把 data URL 当 Asset id，必须先解码成 Image。
+ * 狗用调色板像素图在 canvas 上画出，不再嵌 base64 PNG。
  */
 
 import {
@@ -16,7 +16,12 @@ import type { RenderState } from '../animation/AnimationSystem';
 import type { SpeciesData } from '../data/types';
 import { resolveGrayboxSize } from '../data/defaults';
 import { PALETTE } from './palette';
-import { SPRITES } from './sprites';
+import {
+  DOG_SPRITE_H,
+  DOG_SPRITE_PALETTE,
+  DOG_SPRITE_PIXELS,
+  DOG_SPRITE_W,
+} from './spriteDog';
 
 export interface GrayboxRendererOptions {
   readonly designWidth: number;
@@ -25,14 +30,26 @@ export interface GrayboxRendererOptions {
   readonly showGrid?: boolean;
 }
 
-async function textureFromDataUrl(src: string): Promise<Texture> {
-  const img = new Image();
-  await new Promise<void>((resolve, reject) => {
-    img.onload = () => resolve();
-    img.onerror = () => reject(new Error('sprite decode failed'));
-    img.src = src;
-  });
-  const texture = Texture.from(img);
+function textureFromPixelMap(): Texture {
+  const w = DOG_SPRITE_W;
+  const h = DOG_SPRITE_H;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('2d canvas unavailable');
+  const image = ctx.createImageData(w, h);
+  const pix = DOG_SPRITE_PIXELS;
+  for (let i = 0; i < pix.length; i++) {
+    const pal = DOG_SPRITE_PALETTE[parseInt(pix[i], 16)] ?? [0, 0, 0, 0];
+    const o = i * 4;
+    image.data[o] = pal[0];
+    image.data[o + 1] = pal[1];
+    image.data[o + 2] = pal[2];
+    image.data[o + 3] = pal[3];
+  }
+  ctx.putImageData(image, 0, 0);
+  const texture = Texture.from(canvas);
   try {
     texture.source.scaleMode = 'nearest';
   } catch {
@@ -81,8 +98,7 @@ export class GrayboxRenderer {
     this.app.canvas.style.height = '100%';
     this.app.ticker.stop();
 
-    const texture = await textureFromDataUrl(SPRITES.dog);
-    const dog = new Sprite(texture);
+    const dog = new Sprite(textureFromPixelMap());
     dog.anchor.set(0.52, 0.92);
     dog.roundPixels = true;
     this.dog = dog;
@@ -131,10 +147,10 @@ export class GrayboxRenderer {
     const baseY = Math.round(rs.y + p.offsetY);
     const facingRight = rs.facingDeg >= -90 && rs.facingDeg <= 90;
     const dir = facingRight ? 1 : -1;
-    const scale = 1.05 * (p.scaleY || 1) * (rs.pose.bodyHeightRatio || 1);
+    const scale = 1.35 * (p.scaleY || 1) * (rs.pose.bodyHeightRatio || 1);
 
     this.shadowLayer.clear();
-    this.shadowLayer.ellipse(Math.round(rs.x), Math.round(rs.y + 2), 28, 4).fill({
+    this.shadowLayer.ellipse(Math.round(rs.x), Math.round(rs.y + 2), 26, 4).fill({
       color: 0x000000,
       alpha: 0.32,
     });
@@ -155,7 +171,7 @@ export class GrayboxRenderer {
   }
 
   get bounds(): Rectangle {
-    const size = this.species ? resolveGrayboxSize(this.species) : { w: 96, h: 71 };
+    const size = this.species ? resolveGrayboxSize(this.species) : { w: DOG_SPRITE_W, h: DOG_SPRITE_H };
     return new Rectangle(0, 0, size.w, size.h);
   }
 
