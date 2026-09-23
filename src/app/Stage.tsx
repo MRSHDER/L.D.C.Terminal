@@ -17,6 +17,7 @@ import {
   intentForDrop,
   resolveDropTarget,
   type DropIntentResult,
+  type DropTargetKind,
   type DropZone,
   type InteractionObjectState,
 } from '@core/interaction/ObjectInteraction';
@@ -25,24 +26,16 @@ import './InteractionObjects.css';
 
 const DESIGN_W = 320;
 const DESIGN_H = 200;
-const HUNGER_DECAY_PER_MIN = 0.9;
-const HUNGER_RESTORE = 0.4;
-
-const PADDING_TOP_PERCENT = 62.5;
-if (import.meta.env.DEV) {
-  const actual = (DESIGN_H / DESIGN_W) * 100;
-  if (Math.abs(actual - PADDING_TOP_PERCENT) > 0.01) {
-    console.error(
-      `[LDC] Stage.css 的 padding-top (${PADDING_TOP_PERCENT}%) 与设计分辨率 ` +
-        `${DESIGN_W}×${DESIGN_H} 的宽高比 (${actual.toFixed(2)}%) 不一致。请同步修改。`,
-    );
-  }
-}
 
 type DragSession = {
   readonly id: string;
   readonly offsetX: number;
   readonly offsetY: number;
+};
+
+type RoomObject = InteractionObjectState & {
+  readonly parked: boolean;
+  readonly consumed: boolean;
 };
 
 export function Stage(): React.JSX.Element {
@@ -51,35 +44,54 @@ export function Stage(): React.JSX.Element {
   const frameRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragSession | null>(null);
   const prevBondRef = useRef(snapshot.bond);
-  const hungerRef = useRef(0.22);
-  const [objects, setObjects] = useState<readonly InteractionObjectState[]>(() => createInteractionObjects());
+  const [objects, setObjects] = useState<readonly RoomObject[]>(() =>
+    createInteractionObjects().map((obj) => ({ ...obj, parked: obj.id === 'bowl', consumed: false })),
+  );
   const [lastIntent, setLastIntent] = useState<DropIntentResult | null>(null);
+  const [hoverTarget, setHoverTarget] = useState<DropTargetKind | null>(null);
   const [immerse, setImmerse] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
-  const [selected, setSelected] = useState<DockItemId>('pet');
+  const [selected, setSelected] = useState<DockItemId>('meat');
   const [toastToken, setToastToken] = useState(0);
-  const [hunger, setHunger] = useState(0.22);
+  const [toastText, setToastText] = useState('♥ +Bond');
+  const hungerRef = useRef(0.32);
+  const energyRef = useRef(0.78);
+  const [hunger, setHunger] = useState(0.32);
+  const [energy, setEnergy] = useState(0.78);
 
   const debugVisible =
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).get('debug') === '1';
 
+  const flash = (text: string): void => {
+    setToastText(text);
+    setToastToken((n) => n + 1);
+  };
+
   useEffect(() => {
-    if (snapshot.beingPetted) setToastToken((n) => n + 1);
+    if (snapshot.beingPetted) flash('♥ +Bond');
   }, [snapshot.beingPetted]);
 
   useEffect(() => {
-    if (snapshot.bond > prevBondRef.current + 0.01) setToastToken((n) => n + 1);
+    if (snapshot.bond > prevBondRef.current + 0.01) flash('♥ +Bond');
     prevBondRef.current = snapshot.bond;
   }, [snapshot.bond]);
 
   useEffect(() => {
     const id = window.setInterval(() => {
-      hungerRef.current = Math.min(1, hungerRef.current + HUNGER_DECAY_PER_MIN * (0.25 / 60));
+      hungerRef.current = Math.min(1, hungerRef.current + 0.016 * 0.25);
+      const moving =
+        snapshot.currentState === 'Walk' ||
+        snapshot.currentState === 'Approach' ||
+        snapshot.currentState === 'Retreat';
+      if (snapshot.currentState === 'Sleep') energyRef.current = Math.min(1, energyRef.current + 0.03);
+      else if (moving) energyRef.current = Math.max(0, energyRef.current - 0.011);
+      else energyRef.current = Math.min(1, energyRef.current + 0.003);
       setHunger(hungerRef.current);
+      setEnergy(energyRef.current);
     }, 250);
     return () => window.clearInterval(id);
-  }, []);
+  }, [snapshot.currentState]);
 
   const toWorldPoint = (ev: React.PointerEvent): { x: number; y: number } => {
     const rect = frameRef.current?.getBoundingClientRect();
@@ -99,42 +111,24 @@ export function Stage(): React.JSX.Element {
               x: clamp(x, obj.size.w / 2, DESIGN_W - obj.size.w / 2),
               y: clamp(y, obj.size.h / 2, DESIGN_H - obj.size.h / 2),
               dragging,
+              consumed: false,
             }
           : obj,
       ),
     );
   };
 
-  const resetObject = (id: string): void => {
-    setObjects((prev) =>
-      prev.map((obj) =>
-        obj.id === id
-          ? {
-              ...obj,
-              x: obj.home.x,
-              y: obj.home.y,
-              dragging: false,
-            }
-          : obj,
-      ),
-    );
-  };
-
-  const beginDrag = (ev: React.PointerEvent<HTMLButtonElement>, obj: InteractionObjectState): void => {
+  const beginDrag = (ev: React.PointerEvent<HTMLButtonElement>, obj: RoomObject): void => {
     ev.preventDefault();
     ev.stopPropagation();
     ev.currentTarget.setPointerCapture(ev.pointerId);
     const p = toWorldPoint(ev);
     dragRef.current = {
       id: obj.id,
-      offsetX: obj.dragging ? obj.x - p.x : 0,
-      offsetY: obj.dragging ? obj.y - p.y : 0,
+      offsetX: obj.dragging || obj.parked ? obj.x - p.x : 0,
+      offsetY: obj.dragging || obj.parked ? obj.y - p.y : 0,
     };
     moveObject(obj.id, p.x, p.y, true);
-  };
-
-  const onObjectDown = (ev: React.PointerEvent<HTMLButtonElement>, obj: InteractionObjectState): void => {
-    beginDrag(ev, obj);
   };
 
   const onObjectMove = (ev: React.PointerEvent<HTMLButtonElement>): void => {
@@ -143,7 +137,9 @@ export function Stage(): React.JSX.Element {
     ev.preventDefault();
     ev.stopPropagation();
     const p = toWorldPoint(ev);
-    moveObject(drag.id, p.x + drag.offsetX, p.y + drag.offsetY, true);
+    const at = { x: p.x + drag.offsetX, y: p.y + drag.offsetY };
+    moveObject(drag.id, at.x, at.y, true);
+    setHoverTarget(resolveDropTarget(at, createDropZones(snapshot.position, objects)));
   };
 
   const onObjectUp = (ev: React.PointerEvent<HTMLButtonElement>): void => {
@@ -152,6 +148,7 @@ export function Stage(): React.JSX.Element {
     ev.preventDefault();
     ev.stopPropagation();
     dragRef.current = null;
+    setHoverTarget(null);
 
     const p = toWorldPoint(ev);
     const obj = objects.find((candidate) => candidate.id === drag.id);
@@ -163,30 +160,70 @@ export function Stage(): React.JSX.Element {
     };
     const result = intentForDrop(obj, resolveDropTarget(at, createDropZones(snapshot.position, objects)), at);
     setLastIntent(result);
-    if (result.intent === 'FEED_HAND' || result.intent === 'FEED_BOWL' || result.intent === 'FEED_GROUND') {
-      hungerRef.current = Math.max(0, hungerRef.current - HUNGER_RESTORE);
+
+    if (result.intent === 'FEED_HAND') {
+      hungerRef.current = Math.max(0, hungerRef.current - 0.42);
       setHunger(hungerRef.current);
+      flash('🍖 ate');
+      setObjects((prev) =>
+        prev.map((item) =>
+          item.id === obj.id
+            ? { ...item, dragging: false, parked: false, consumed: true, x: item.home.x, y: item.home.y }
+            : item,
+        ),
+      );
+      return;
     }
-    resetObject(obj.id);
+
+    if (result.intent === 'FEED_BOWL') {
+      const bowl = objects.find((item) => item.id === 'bowl');
+      flash('▾ in bowl');
+      setObjects((prev) =>
+        prev.map((item) =>
+          item.id === obj.id
+            ? {
+                ...item,
+                x: bowl ? bowl.x : at.x,
+                y: bowl ? bowl.y - 10 : at.y,
+                dragging: false,
+                parked: true,
+                consumed: false,
+              }
+            : item,
+        ),
+      );
+      return;
+    }
+
+    setObjects((prev) =>
+      prev.map((item) =>
+        item.id === obj.id
+          ? { ...item, x: item.home.x, y: item.home.y, dragging: false, parked: item.id === 'bowl', consumed: false }
+          : item,
+      ),
+    );
   };
 
-  const onDockSelect = (id: DockItemId): void => {
-    setSelected(id);
-    if (id === 'more') setArchiveOpen(false);
-  };
+  const onDockSelect = (id: DockItemId): void => setSelected(id);
 
   const onDockItemDown = (id: DockItemId, ev: React.PointerEvent<HTMLButtonElement>): void => {
-    if (id === 'pet' || id === 'more') return;
     const obj = objects.find((candidate) => candidate.id === id);
     if (!obj) return;
     setSelected(id);
     beginDrag(ev, obj);
   };
 
-  const visibleObjects = objects.filter((obj) => obj.id === 'bowl' || obj.dragging);
+  const visibleObjects = objects.filter((obj) => obj.id === 'bowl' || obj.dragging || obj.parked);
+  const zones = createDropZones(snapshot.position, objects);
 
   const interactionLayer = (
     <div className="ldc-objects" aria-label="Interaction objects">
+      {hoverTarget && (
+        <i
+          className={`ldc-target ldc-target--${hoverTarget}`}
+          style={zoneStyle(zones.find((zone) => zone.kind === hoverTarget))}
+        />
+      )}
       {visibleObjects.map((obj) => (
         <button
           key={obj.id}
@@ -202,8 +239,8 @@ export function Stage(): React.JSX.Element {
             width: `${(obj.size.w / DESIGN_W) * 100}%`,
             height: `${(obj.size.h / DESIGN_H) * 100}%`,
           }}
-          title={`${obj.label}: drag to dog, floor, or bowl`}
-          onPointerDown={(ev) => onObjectDown(ev, obj)}
+          title={`${obj.label}: drag to mouth or bowl`}
+          onPointerDown={(ev) => beginDrag(ev, obj)}
           onPointerMove={onObjectMove}
           onPointerUp={onObjectUp}
           onPointerCancel={onObjectUp}
@@ -240,10 +277,11 @@ export function Stage(): React.JSX.Element {
           catalogNo={snapshot.catalogNo}
           displayName={snapshot.displayName}
           bond={snapshot.bond}
-          energy={snapshot.energy}
+          energy={energy}
           hunger={hunger}
           hudHot={snapshot.beingPetted || snapshot.currentState !== 'Idle' || hunger > 0.72}
           toastToken={toastToken}
+          toastText={toastText}
           immerse={immerse}
           selected={selected}
           archiveOpen={archiveOpen}
@@ -265,64 +303,20 @@ export function Stage(): React.JSX.Element {
               <span className="ldc-brand__mark">L.D.C.</span>
               <span className="ldc-brand__sub">LOW-DEFINITION CANINE DATABASE</span>
             </div>
-            <div className="ldc-header__phase">
-              <span className="ldc-badge">M3 · INTERACTION FOUNDATION</span>
-              <span className="ldc-header__note">调试模式（?debug=1）</span>
-            </div>
           </header>
-
           <main className="ldc-main">
             <section className="ldc-stage">
               <div ref={frameRef} className="ldc-stage__frame">
                 <div ref={engine.containerRef} className="ldc-stage__canvas" />
                 {interactionLayer}
-                {snapshot.error && (
-                  <div className="ldc-stage__error">
-                    <strong>渲染器初始化失败</strong>
-                    <pre>{snapshot.error}</pre>
-                  </div>
-                )}
-                {!snapshot.ready && !snapshot.error && (
-                  <div className="ldc-stage__loading">引擎启动中…</div>
-                )}
-              </div>
-
-              <div className="ldc-stage__bar">
-                <button className="ldc-btn" onClick={engine.isPaused ? engine.resume : engine.pause}>
-                  {engine.isPaused ? '▶ 继续' : '⏸ 暂停'}
-                </button>
-                <button className="ldc-btn" onClick={engine.resetSpecies}>
-                  ↻ 还原 JSON
-                </button>
-                <span className="ldc-stage__hint">
-                  状态：<code>{snapshot.currentState}</code>
-                </span>
-                {lastIntent && (
-                  <span className="ldc-stage__hint">
-                    意图：<code>{lastIntent.intent}</code>
-                  </span>
-                )}
               </div>
             </section>
-
             <aside className="ldc-side">
               <SnapshotPanel snapshot={snapshot} onSwitchSpecies={engine.switchSpecies} />
               <DiagnosticsPanel snapshot={snapshot} />
               <TuningPanel snapshot={snapshot} onPatch={engine.patchSpecies} />
             </aside>
           </main>
-
-          <footer className="ldc-footer">
-            <span>
-              逻辑帧 <b>{snapshot.tick}</b>
-            </span>
-            <span>
-              渲染 <b>{snapshot.fps.toFixed(0)}</b> fps
-            </span>
-            <span>
-              像素帧 <b>{snapshot.targetFps}</b> fps
-            </span>
-          </footer>
         </>
       )}
     </div>
@@ -335,36 +329,21 @@ function createDropZones(
 ): readonly DropZone[] {
   const bowl = objects.find((obj) => obj.id === 'bowl');
   return [
-    {
-      kind: 'mouth',
-      x: dog.x + 4,
-      y: dog.y - 42,
-      w: 34,
-      h: 28,
-    },
+    { kind: 'mouth', x: dog.x - 10, y: dog.y - 52, w: 52, h: 40 },
     bowl
-      ? {
-          kind: 'bowl',
-          x: bowl.x - 18,
-          y: bowl.y - 14,
-          w: 36,
-          h: 28,
-        }
-      : {
-          kind: 'bowl',
-          x: 252,
-          y: 156,
-          w: 44,
-          h: 32,
-        },
-    {
-      kind: 'ground',
-      x: 0,
-      y: 142,
-      w: DESIGN_W,
-      h: DESIGN_H - 142,
-    },
+      ? { kind: 'bowl', x: bowl.x - 22, y: bowl.y - 18, w: 44, h: 32 }
+      : { kind: 'bowl', x: 252, y: 156, w: 44, h: 32 },
   ];
+}
+
+function zoneStyle(zone: DropZone | undefined): React.CSSProperties | undefined {
+  if (!zone) return undefined;
+  return {
+    left: `${(zone.x / DESIGN_W) * 100}%`,
+    top: `${(zone.y / DESIGN_H) * 100}%`,
+    width: `${(zone.w / DESIGN_W) * 100}%`,
+    height: `${(zone.h / DESIGN_H) * 100}%`,
+  };
 }
 
 function clamp(value: number, min: number, max: number): number {
