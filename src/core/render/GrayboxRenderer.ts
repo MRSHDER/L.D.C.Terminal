@@ -1,6 +1,6 @@
 /**
  * L.D.C. — 渲染器（PixiJS）
- * 狗使用独立精灵帧素材；渲染器只负责摆放和低帧选帧。
+ * 狗使用独立精灵帧素材。Pixi 8 不能把 data URL 当 Asset id，必须先解码成 Image。
  */
 
 import {
@@ -26,14 +26,21 @@ export interface GrayboxRendererOptions {
 
 const DOG_WALK_TEXTURE_INDEXES = [1, 2, 1, 2] as const;
 
-function textureFromImage(src: string): Texture {
-  const texture = Texture.from(src);
-  try {
-    texture.source.scaleMode = 'nearest';
-  } catch {
-    /* pixi version difference */
-  }
-  return texture;
+function textureFromDataUrl(src: string): Promise<Texture> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const texture = Texture.from(img);
+      try {
+        texture.source.scaleMode = 'nearest';
+      } catch {
+        /* pixi version difference */
+      }
+      resolve(texture);
+    };
+    img.onerror = () => reject(new Error('dog frame decode failed'));
+    img.src = src;
+  });
 }
 
 export class GrayboxRenderer {
@@ -43,7 +50,7 @@ export class GrayboxRenderer {
   private readonly background: Graphics;
   private readonly grid: Graphics;
   private readonly shadowLayer: Graphics;
-  private readonly dogTextures = DOG_FRAME_IMAGES.map(textureFromImage);
+  private dogTextures: Texture[] = [];
   private dog: Sprite | null = null;
   private species: SpeciesData | null = null;
   private initialized = false;
@@ -77,7 +84,10 @@ export class GrayboxRenderer {
     this.app.canvas.style.height = '100%';
     this.app.ticker.stop();
 
-    const dog = new Sprite(this.dogTextures[0] as Texture);
+    this.dogTextures = await Promise.all(DOG_FRAME_IMAGES.map(textureFromDataUrl));
+    const first = this.dogTextures[0];
+    if (!first) throw new Error('dog frames missing');
+    const dog = new Sprite(first);
     dog.anchor.set(0.52, 0.92);
     dog.roundPixels = true;
     this.dog = dog;
@@ -139,10 +149,8 @@ export class GrayboxRenderer {
     const scaleX = dir * scaleBase * Math.abs(p.scaleX || 1);
     const scaleY = scaleBase * poseScaleY * proceduralScaleY;
 
-    const offsetX = 0;
-    const offsetY = 0;
-    const baseX = Math.round(rs.x + p.offsetX + offsetX);
-    const baseY = Math.round(rs.y + p.offsetY + offsetY + rs.pose.groundOffsetPx);
+    const baseX = Math.round(rs.x + p.offsetX);
+    const baseY = Math.round(rs.y + p.offsetY + rs.pose.groundOffsetPx);
 
     const shadowW = moving ? 42 + Math.round(rs.speedRatio * 6) : 40;
     const shadowH = moving ? 5 : 4;
@@ -197,6 +205,3 @@ export class GrayboxRenderer {
     return this.app.ticker;
   }
 }
-
-
-
