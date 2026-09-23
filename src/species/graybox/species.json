@@ -14,18 +14,18 @@
 
   "physical": {
     "bodyScale": 1.0,
-    "hitbox": { "w": 56, "h": 40, "anchorY": 0.9 },
+    "hitbox": { "w": 58, "h": 52, "anchorY": 0.92 },
     "grayboxTint": 16777215,
     "silhouette": {
-      "bodyLength": 1.32,
-      "chestDepth": 0.74,
-      "legLength": 0.4,
-      "headForward": 0.56,
-      "headSize": 0.5,
-      "snoutLength": 0.4,
+      "bodyLength": 1.08,
+      "chestDepth": 0.58,
+      "legLength": 0.78,
+      "headForward": 0.7,
+      "headSize": 0.48,
+      "snoutLength": 0.55,
       "earShape": "prick",
-      "earLength": 0.46,
-      "tailAttach": 0.08
+      "earLength": 0.62,
+      "tailAttach": 0.1
     }
   },
 

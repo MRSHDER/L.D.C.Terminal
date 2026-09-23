@@ -14,62 +14,55 @@
 
   "physical": {
     "bodyScale": 0.86,
-    "hitbox": { "w": 58, "h": 36, "anchorY": 0.9 },
+    "hitbox": { "w": 62, "h": 54, "anchorY": 0.92 },
     "grayboxTint": 16777215,
     "silhouette": {
-      "bodyLength": 1.5,
-      "chestDepth": 0.6,
-      "legLength": 0.58,
-      "headForward": 0.72,
+      "bodyLength": 1.18,
+      "chestDepth": 0.48,
+      "legLength": 0.95,
+      "headForward": 0.82,
       "headSize": 0.42,
-      "snoutLength": 0.58,
+      "snoutLength": 0.7,
       "earShape": "prick",
-      "earLength": 0.6,
-      "tailAttach": 0.04
+      "earLength": 0.7,
+      "tailAttach": 0.06
     }
   },
 
   "personality": {
     "temperament": {
-      "gentleness": 0.35,
-      "energy": 0.95,
-      "curiosity": 0.9,
-      "stubbornness": 0.15,
-      "shyness": 0.1,
-      "clinginess": 0.6,
-      "playfulness": 0.9,
-      "obedience": 0.85,
-      "randomness": 0.3
+      "gentleness": 0.45,
+      "energy": 0.88,
+      "curiosity": 0.8,
+      "stubbornness": 0.35,
+      "shyness": 0.22,
+      "clinginess": 0.4,
+      "playfulness": 0.78,
+      "obedience": 0.62,
+      "randomness": 0.4
     },
-    "traits": ["swift", "alert", "restless"]
+    "traits": ["swift", "alert"]
   },
 
   "cognition": {
-    "decisionIntervalMs": 260,
+    "decisionIntervalMs": 220,
     "reactionDelayMs": [60, 180],
     "attentionSpanMs": 4000,
     "memorySpanMs": 20000,
-    "learningRate": 0.4
+    "learningRate": 0.22
   },
 
   "animation": {
-    "targetFps": 12,
-    "breath": { "freqHz": 0.42, "ampPx": 1.6, "bodyScaleY": 0.022 },
-    "blink": { "baseIntervalMs": 2600, "varianceMs": 1400, "durationMs": 110 },
-    "tail": { "segments": 4, "baseAngleDeg": 14, "maxSwingDeg": 34, "delayPerSegMs": 55 },
-    "ear": { "jitterDeg": 7, "triggerBias": 0.45 },
-    "float": { "ampPx": 1.1, "freqHz": 0.24 },
-    "transitions": {},
-    "defaultTransitionMs": 110
+    "targetFps": 12
   },
 
   "locomotion": {
-    "walkSpeedPx": 62,
-    "runSpeedPx": 118,
-    "turnRateDeg": 420,
-    "idleWanderRadiusPx": 52,
-    "wanderChancePerMin": 14,
-    "arriveThresholdPx": 2
+    "walkSpeedPx": 58,
+    "runSpeedPx": 96,
+    "turnRateDeg": 320,
+    "idleWanderRadiusPx": 90,
+    "wanderChancePerMin": 5,
+    "arriveThresholdPx": 3
   },
 
   "resources": {

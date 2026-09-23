@@ -8,111 +8,61 @@
   },
   "catalogNo": "LDC-003",
   "description": {
-    "zh": "唯一目的是验证「同一套代码，换 JSON 就是另一只狗」。它需要更长时间建立信任，容易被吓到，但一旦亲近就非常黏人。",
+    "zh": "唯一目的是验证「同一套代码，换 JSON 就是另一只狗」。它需要更长时间建立信任，容易被吓到，但一旦亲近就非常粘人。",
     "en": "Exists to prove that one codebase plus different JSON equals a different animal. Slow to trust, easily startled, but deeply attached once bonded."
   },
 
   "physical": {
     "bodyScale": 0.96,
-    "hitbox": { "w": 50, "h": 38, "anchorY": 0.9 },
+    "hitbox": { "w": 52, "h": 46, "anchorY": 0.92 },
     "grayboxTint": 16777215,
     "silhouette": {
-      "bodyLength": 1.16,
-      "chestDepth": 0.84,
-      "legLength": 0.3,
-      "headForward": 0.4,
+      "bodyLength": 0.96,
+      "chestDepth": 0.7,
+      "legLength": 0.58,
+      "headForward": 0.58,
       "headSize": 0.54,
-      "snoutLength": 0.26,
+      "snoutLength": 0.32,
       "earShape": "drop",
-      "earLength": 0.66,
-      "tailAttach": 0.14
+      "earLength": 0.72,
+      "tailAttach": 0.16
     }
   },
 
   "personality": {
     "temperament": {
-      "gentleness": 0.85,
-      "energy": 0.35,
-      "curiosity": 0.3,
+      "gentleness": 0.72,
+      "energy": 0.28,
+      "curiosity": 0.35,
       "stubbornness": 0.4,
-      "shyness": 0.88,
-      "clinginess": 0.8,
-      "playfulness": 0.25,
-      "obedience": 0.5,
-      "randomness": 0.3
+      "shyness": 0.82,
+      "clinginess": 0.78,
+      "playfulness": 0.32,
+      "obedience": 0.55,
+      "randomness": 0.28
     },
-    "traits": ["shy", "slow-warming", "devoted"]
+    "traits": ["shy", "slow-to-trust"]
   },
 
   "cognition": {
     "decisionIntervalMs": 780,
-    "reactionDelayMs": [500, 1500],
-    "attentionSpanMs": 7000,
-    "memorySpanMs": 45000,
-    "learningRate": 0.06
-  },
-
-  "animation": {
-    "targetFps": 8,
-    "breath": { "freqHz": 0.19, "ampPx": 1.4, "bodyScaleY": 0.019 },
-    "blink": { "baseIntervalMs": 5200, "varianceMs": 2800, "durationMs": 160 },
-    "tail": { "segments": 3, "baseAngleDeg": 3, "maxSwingDeg": 12, "delayPerSegMs": 110 },
-    "ear": { "jitterDeg": 3, "triggerBias": 0.15 },
-    "float": { "ampPx": 0.7, "freqHz": 0.11 },
-    "transitions": {},
-    "defaultTransitionMs": 320
+    "reactionDelayMs": [400, 1200],
+    "attentionSpanMs": 5000,
+    "memorySpanMs": 28000,
+    "learningRate": 0.08
   },
 
   "locomotion": {
-    "walkSpeedPx": 22,
-    "runSpeedPx": 48,
-    "turnRateDeg": 150,
-    "idleWanderRadiusPx": 34,
+    "walkSpeedPx": 18,
+    "runSpeedPx": 42,
+    "turnRateDeg": 160,
+    "idleWanderRadiusPx": 28,
     "wanderChancePerMin": 1.6,
-    "arriveThresholdPx": 4
+    "arriveThresholdPx": 3
   },
 
   "resources": {
     "assetRoot": "",
     "animationClips": {}
-  },
-
-  "affection": {
-    "bonding": {
-      "gainPerPet": 0.2,
-      "decayPerSec": 0.009,
-      "penaltyPerSecWhenAnnoyed": 0.09,
-      "requiresTouchToNotice": true,
-      "ladder": [
-        { "atBond": 0.0, "state": "LookAt", "label": { "zh": "远远看着你", "en": "Watches from afar" } },
-        { "atBond": 0.4, "state": "Approach", "label": { "zh": "犹豫着靠近", "en": "Hesitantly approaches" } },
-        { "atBond": 0.66, "state": "Sit", "label": { "zh": "终于坐下来", "en": "Finally sits down" } },
-        { "atBond": 0.86, "state": "WagTail", "label": { "zh": "轻轻摇尾巴", "en": "Tail wags softly" } },
-        { "atBond": 0.96, "state": "PetEnjoy", "label": { "zh": "完全信任", "en": "Fully trusts you" } }
-      ]
-    },
-    "petting": {
-      "minEffectiveMs": 140,
-      "pleasureBase": 0.4,
-      "arousalGain": 0.18,
-      "tolerance": 2
-    },
-    "annoyance": {
-      "windowMs": 3600,
-      "threshold": 6,
-      "annoyancePerExcess": 0.4,
-      "decayPerSec": 0.16,
-      "leaveAt": 0.7,
-      "sulkMs": 8200
-    }
-  },
-
-  "room": {
-    "floorLineRatio": 0.74,
-    "floorColor": 1973798,
-    "floorShadeColor": 1447452,
-    "wallColor": 1184280,
-    "showGrid": false,
-    "playerAnchor": { "xRatio": 0.5, "yRatio": 1.15 }
   }
 }
