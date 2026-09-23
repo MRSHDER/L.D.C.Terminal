@@ -45,10 +45,6 @@ export interface SilhouetteConfig {
   readonly tailAttach: number;
 }
 
-/**
- * 程序化毛色。渲染器只认识色板 + 开关，不认识「伯恩山」。
- * 三色犬把 markings 打开即可，单色灰盒保持全 false。
- */
 export interface CoatMarkings {
   readonly blaze: boolean;
   readonly muzzle: boolean;
@@ -180,9 +176,37 @@ export interface LocomotionConfig {
   readonly arriveThresholdPx: number;
 }
 
+/** Optional sprite-sheet clip. Missing species keep using graybox frames. */
+export interface SpriteClipConfig {
+  readonly src: string;
+  readonly frames: number;
+  readonly fps: number;
+  readonly loop?: boolean;
+  readonly frameWidth?: number;
+  readonly frameHeight?: number;
+  readonly anchor?: readonly [number, number];
+  readonly baselineY?: number;
+}
+
+export interface SpriteSheetDefaults {
+  readonly frameWidth?: number;
+  readonly frameHeight?: number;
+  readonly anchor?: readonly [number, number];
+  readonly baselineY?: number;
+  readonly facing?: string;
+  readonly loop?: boolean;
+}
+
+export interface SpriteSheetConfig {
+  readonly format: 'sheet-row' | 'frame-files';
+  readonly defaults?: SpriteSheetDefaults;
+  readonly clips: Readonly<Record<string, SpriteClipConfig>>;
+}
+
 export interface ResourcesConfig {
   readonly assetRoot: string;
   readonly animationClips: Readonly<Record<string, readonly string[]>>;
+  readonly sprites?: SpriteSheetConfig;
   readonly audio?: Readonly<Record<string, string>>;
 }
 
