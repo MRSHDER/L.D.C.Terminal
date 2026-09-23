@@ -169,27 +169,38 @@ export class GrayboxRenderer {
   }
 
   private redrawParts(species: SpeciesData): void {
-    const sil = resolveSilhouette(species);
+    const raw = resolveSilhouette(species);
     const coat = resolveCoat(species);
     this.coat = coat;
     const tint = species.physical.grayboxTint;
     const bodyFill = tint === 0xffffff ? coat.base : tint;
-    const bodyW = sil.torsoW;
-    const bodyH = sil.torsoH;
+
+    // The authored silhouette can be quite long for large breeds. The graybox should read
+    // as a compact side-view dog first; breed scale can still come through bodyScale.
+    const bodyW = Math.max(34, Math.round(raw.torsoW * 0.86));
+    const bodyH = Math.max(22, Math.round(raw.torsoH * 0.88));
+    const headW = Math.max(14, Math.round(raw.headW * 0.88));
+    const headH = Math.max(13, Math.round(raw.headH * 0.82));
+    const snoutW = Math.max(4, Math.round(raw.snoutW * 0.82));
+    const snoutH = Math.max(4, Math.round(raw.snoutH * 0.78));
+    const legW = Math.max(3, Math.round(raw.legW * 0.9));
+    const legH = Math.max(8, Math.round(raw.legH * 0.82));
+    const legGap = Math.max(6, Math.round(raw.legGap * 0.82));
+
     this.bodyGfx.clear();
     this.drawTorso(this.bodyGfx, bodyW, bodyH, coat, bodyFill);
-    const headW = sil.headW;
-    const headH = sil.headH;
+
     this.headGfx.clear();
     this.drawHead(this.headGfx, headW, headH, coat);
     this.neckGfx.clear();
     this.drawNeck(this.neckGfx, headW, headH, coat);
     this.snoutGfx.clear();
-    this.drawSnout(this.snoutGfx, headW, headH, sil.snoutW, sil.snoutH, coat);
-    this.drawEar(this.earGfxL, sil, -1, coat);
-    this.drawEar(this.earGfxR, sil, 1, coat);
-    const segLen = Math.max(5, Math.round(bodyW * 0.2));
-    const segThick = Math.max(3, Math.round(bodyH * 0.16));
+    this.drawSnout(this.snoutGfx, headW, headH, snoutW, snoutH, coat);
+    this.drawEar(this.earGfxL, raw, -1, coat);
+    this.drawEar(this.earGfxR, raw, 1, coat);
+
+    const segLen = Math.max(4, Math.round(bodyW * 0.13));
+    const segThick = Math.max(3, Math.round(bodyH * 0.13));
     const last = this.tailSegments.length - 1;
     for (let i = 0; i < this.tailSegments.length; i++) {
       const g = this.tailSegments[i];
@@ -198,10 +209,11 @@ export class GrayboxRenderer {
       const tip = coat.markings.tailTip && i === last;
       const fill = tip ? coat.white : coat.shade;
       const hi = tip ? coat.white : coat.highlight;
-      g.rect(0, -segThick / 2, segLen, segThick).fill({ color: fill });
-      g.rect(0, -segThick / 2, segLen, 1).fill({ color: hi });
-      g.rect(segLen - 1, -segThick / 2, 1, segThick).fill({ color: coat.outline });
+      g.rect(0, -Math.floor(segThick / 2), segLen, segThick).fill({ color: fill });
+      g.rect(0, -Math.floor(segThick / 2), segLen, 1).fill({ color: hi });
+      g.rect(segLen - 1, -Math.floor(segThick / 2), 1, segThick).fill({ color: coat.outline });
     }
+
     this.legGfx.clear();
     this.eyesGfx.clear();
     this.geometry = {
@@ -209,115 +221,109 @@ export class GrayboxRenderer {
       bodyH,
       headW,
       headH,
-      earW: sil.earW,
-      earH: sil.earH,
+      earW: raw.earW,
+      earH: raw.earH,
       segLen,
       segThick,
-      legW: sil.legW,
-      legH: sil.legH,
-      legGap: sil.legGap,
-      snoutW: sil.snoutW,
-      headForwardPx: sil.headForwardPx,
-      tailAttachPx: sil.tailAttachPx,
-      earShape: sil.earShape,
+      legW,
+      legH,
+      legGap,
+      snoutW,
+      headForwardPx: Math.round(bodyW * 0.42),
+      tailAttachPx: Math.round(bodyW * 0.46),
+      earShape: raw.earShape,
     };
   }
 
   private drawTorso(g: Graphics, w: number, h: number, coat: CoatConfig, fill: number): void {
-    const x0 = -w / 2;
-    const x1 = w / 2;
-    const frontLift = Math.max(3, Math.round(h * 0.2));
-    const rearDrop = Math.max(1, Math.round(h * 0.06));
-    const notch = Math.max(2, Math.round(Math.min(w, h) * 0.1));
-    g.moveTo(x0 + notch, -h + rearDrop)
-      .lineTo(x1 - notch * 1.4, -h - frontLift)
-      .lineTo(x1, -h - frontLift + notch)
-      .lineTo(x1, -Math.round(h * 0.42))
-      .lineTo(x1 - 1, -notch)
+    const x0 = -Math.round(w / 2);
+    const x1 = Math.round(w / 2);
+    const backTop = -Math.round(h * 0.82);
+    const chestTop = -Math.round(h * 0.9);
+    const chestBottom = -Math.round(h * 0.18);
+    const bellyY = -Math.round(h * 0.05);
+    const rumpY = -Math.round(h * 0.22);
+    const notch = Math.max(2, Math.round(h * 0.12));
+
+    g.moveTo(x0 + notch, backTop)
+      .lineTo(x1 - Math.round(w * 0.18), chestTop)
+      .lineTo(x1 - 1, chestTop + notch)
+      .lineTo(x1, chestBottom)
       .lineTo(x1 - notch, 0)
-      .lineTo(x0 + notch, 0)
-      .lineTo(x0 + 1, -notch)
-      .lineTo(x0, -Math.round(h * 0.45))
-      .lineTo(x0, -h + rearDrop + notch)
+      .lineTo(x0 + Math.round(w * 0.22), 0)
+      .lineTo(x0 + 1, rumpY)
+      .lineTo(x0, -Math.round(h * 0.56))
+      .lineTo(x0 + notch, backTop)
       .closePath()
       .fill({ color: fill });
-    g.rect(x0 + notch, -Math.max(2, Math.round(h * 0.22)), w - notch * 2, Math.max(2, Math.round(h * 0.22))).fill({
+
+    g.rect(x0 + Math.round(w * 0.1), -Math.max(2, Math.round(h * 0.2)), Math.round(w * 0.78), Math.max(2, Math.round(h * 0.2))).fill({
       color: coat.shade,
     });
-    g.rect(Math.round(x0 + w * 0.18), -h - frontLift + 2, Math.max(2, Math.round(w * 0.42)), 1).fill({
-      color: coat.highlight,
-    });
-    g.rect(Math.round(x0 + w * 0.28), -h - frontLift - 1, 3, 1).fill({ color: fill });
-    g.rect(Math.round(x0 + w * 0.48), -h - frontLift - 1, 2, 1).fill({ color: fill });
+    g.rect(x0 + Math.round(w * 0.22), backTop + 2, Math.round(w * 0.5), 1).fill({ color: coat.highlight });
+
     if (coat.markings.bib) {
-      const bibW = Math.max(8, Math.round(w * 0.36));
-      const bibH = Math.max(8, Math.round(h * 0.62));
-      g.moveTo(x1 - bibW, -Math.round(h * 0.18))
-        .lineTo(x1 - 1, -bibH)
-        .lineTo(x1 + 1, -Math.round(h * 0.28))
-        .lineTo(x1 - 2, 0)
-        .lineTo(x1 - bibW + 2, 0)
+      const bibW = Math.max(7, Math.round(w * 0.28));
+      g.moveTo(x1 - bibW, -Math.round(h * 0.12))
+        .lineTo(x1 - 2, -Math.round(h * 0.62))
+        .lineTo(x1 - 2, -Math.round(h * 0.18))
+        .lineTo(x1 - Math.round(bibW * 0.45), 0)
+        .lineTo(x1 - bibW + 1, 0)
         .closePath()
         .fill({ color: coat.white });
-      g.rect(x1 - bibW + 3, -2, bibW - 6, 2).fill({ color: coat.whiteShade });
+      g.rect(x1 - bibW + 3, -2, Math.max(2, bibW - 5), 2).fill({ color: coat.whiteShade });
     }
-    g.moveTo(x0 + notch, -h + rearDrop)
-      .lineTo(x1 - notch * 1.4, -h - frontLift)
-      .lineTo(x1, -h - frontLift + notch)
-      .lineTo(x1, -Math.round(h * 0.42))
-      .lineTo(x1 - 1, -notch)
+
+    g.moveTo(x0 + notch, backTop)
+      .lineTo(x1 - Math.round(w * 0.18), chestTop)
+      .lineTo(x1 - 1, chestTop + notch)
+      .lineTo(x1, chestBottom)
       .lineTo(x1 - notch, 0)
-      .lineTo(x0 + notch, 0)
-      .lineTo(x0 + 1, -notch)
-      .lineTo(x0, -Math.round(h * 0.45))
-      .lineTo(x0, -h + rearDrop + notch)
+      .lineTo(x0 + Math.round(w * 0.22), 0)
+      .lineTo(x0 + 1, rumpY)
+      .lineTo(x0, -Math.round(h * 0.56))
+      .lineTo(x0 + notch, backTop)
       .closePath()
       .stroke({ color: coat.outline, width: 1, alignment: 0 });
+
+    g.rect(x0 + Math.round(w * 0.24), bellyY, Math.round(w * 0.46), 1).fill({ color: coat.outline });
   }
 
   private drawHead(g: Graphics, w: number, h: number, coat: CoatConfig): void {
-    const x = -w / 2;
+    const x = -Math.round(w * 0.48);
     const y = -h;
-    const notch = Math.max(2, Math.round(Math.min(w, h) * 0.16));
+    const notch = Math.max(2, Math.round(Math.min(w, h) * 0.14));
+
     g.moveTo(x + notch, y)
       .lineTo(x + w - notch, y)
       .lineTo(x + w, y + notch)
-      .lineTo(x + w, y + h - notch)
+      .lineTo(x + w - 1, y + h - notch)
       .lineTo(x + w - notch, y + h)
       .lineTo(x + notch, y + h)
       .lineTo(x, y + h - notch)
       .lineTo(x, y + notch)
       .closePath()
       .fill({ color: coat.base });
-    g.rect(x + notch, y + h - Math.max(2, Math.round(h * 0.16)), w - notch * 2, Math.max(2, Math.round(h * 0.16))).fill({
+    g.rect(x + notch, y + h - Math.max(2, Math.round(h * 0.18)), w - notch * 2, Math.max(2, Math.round(h * 0.18))).fill({
       color: coat.shade,
     });
+
     if (coat.markings.blaze) {
-      const blazeW = Math.max(3, Math.round(w * 0.22));
-      g.rect(Math.round(w * 0.06), y + 1, blazeW, Math.round(h * 0.55)).fill({ color: coat.white });
-      g.rect(Math.round(w * 0.1), y, Math.max(2, blazeW - 2), 1).fill({ color: coat.white });
+      const blazeW = Math.max(2, Math.round(w * 0.16));
+      g.rect(Math.round(w * 0.04), y + 1, blazeW, Math.round(h * 0.5)).fill({ color: coat.white });
     }
     if (coat.markings.rustPoints) {
-      const browW = Math.max(4, Math.round(w * 0.28));
-      const browH = Math.max(2, Math.round(h * 0.14));
-      g.rect(Math.round(w * 0.02), -Math.round(h * 0.78), browW, browH).fill({ color: coat.rust });
-      const cheekW = Math.max(5, Math.round(w * 0.34));
-      const cheekH = Math.max(3, Math.round(h * 0.22));
-      g.rect(-Math.round(w * 0.06), -Math.round(h * 0.42), cheekW, cheekH).fill({ color: coat.rust });
-      g.rect(-Math.round(w * 0.02), -Math.round(h * 0.28), Math.round(cheekW * 0.7), 2).fill({
-        color: coat.rustShade,
+      g.rect(Math.round(w * 0.03), -Math.round(h * 0.76), Math.max(3, Math.round(w * 0.18)), 2).fill({ color: coat.rust });
+      g.rect(-Math.round(w * 0.03), -Math.round(h * 0.42), Math.max(4, Math.round(w * 0.24)), Math.max(2, Math.round(h * 0.16))).fill({
+        color: coat.rust,
       });
     }
-    if (coat.markings.muzzle) {
-      g.rect(-Math.round(w * 0.08), -Math.round(h * 0.28), Math.round(w * 0.7), Math.round(h * 0.22)).fill({
-        color: coat.white,
-      });
-    }
+
     g.rect(x + notch, y + 1, w - notch * 2, 1).fill({ color: coat.highlight });
     g.moveTo(x + notch, y)
       .lineTo(x + w - notch, y)
       .lineTo(x + w, y + notch)
-      .lineTo(x + w, y + h - notch)
+      .lineTo(x + w - 1, y + h - notch)
       .lineTo(x + w - notch, y + h)
       .lineTo(x + notch, y + h)
       .lineTo(x, y + h - notch)
@@ -327,17 +333,12 @@ export class GrayboxRenderer {
   }
 
   private drawNeck(g: Graphics, headW: number, headH: number, coat: CoatConfig): void {
-    const nw = Math.max(5, Math.round(headW * 0.46));
-    const nh = Math.max(5, Math.round(headH * 0.46));
-    const x = -headW / 2 - nw + 3;
-    const y = -Math.round(headH * 0.36);
+    const nw = Math.max(5, Math.round(headW * 0.38));
+    const nh = Math.max(5, Math.round(headH * 0.36));
+    const x = -Math.round(headW * 0.62);
+    const y = -Math.round(headH * 0.35);
     g.rect(x, y, nw, nh).fill({ color: coat.base });
     g.rect(x, y + nh - 2, nw, 2).fill({ color: coat.shade });
-    if (coat.markings.bib) {
-      g.rect(x + Math.round(nw * 0.45), y + 1, Math.max(3, Math.round(nw * 0.5)), nh - 2).fill({
-        color: coat.white,
-      });
-    }
   }
 
   private drawSnout(
@@ -349,23 +350,19 @@ export class GrayboxRenderer {
     coat: CoatConfig,
   ): void {
     if (snoutW < 2) return;
-    const sx = Math.round(headW / 2) - 1;
+    const sx = Math.round(headW * 0.3);
     const top = -Math.round(headH * 0.48);
-    const bot = -Math.round(headH * 0.1);
+    const bot = -Math.round(headH * 0.18);
     const tipX = sx + snoutW;
-    const tipY = -Math.round(headH * 0.32);
     const fill = coat.markings.muzzle ? coat.white : coat.base;
     g.moveTo(sx, top)
-      .lineTo(tipX, tipY)
-      .lineTo(tipX, tipY + Math.max(3, snoutH - 2))
-      .lineTo(sx, bot)
+      .lineTo(tipX - 1, top + 2)
+      .lineTo(tipX, bot)
+      .lineTo(sx, bot + 1)
       .closePath()
       .fill({ color: fill });
-    g.rect(sx, bot - 1, Math.max(2, snoutW - 1), 1).fill({
-      color: coat.markings.muzzle ? coat.whiteShade : coat.shade,
-    });
-    g.rect(tipX - 2, tipY + 1, 3, 3).fill({ color: coat.nose });
-    g.rect(tipX - 1, tipY, 2, 1).fill({ color: coat.outline });
+    g.rect(sx, bot, Math.max(2, snoutW - 1), 1).fill({ color: coat.markings.muzzle ? coat.whiteShade : coat.shade });
+    g.rect(tipX - 2, top + Math.max(2, Math.round(snoutH * 0.35)), 3, 2).fill({ color: coat.nose });
   }
 
   private drawEar(g: Graphics, sil: ResolvedSilhouette, side: -1 | 1, coat: CoatConfig): void {
@@ -447,7 +444,7 @@ export class GrayboxRenderer {
     });
 
     const poseScale = rs.pose.bodyHeightRatio * p.scaleY;
-    const stand = Math.round(geo.legH * poseScale * 0.82);
+    const stand = Math.round(geo.legH * poseScale * 0.78);
     const groundY = Math.round(baseY);
     const torsoY = groundY - stand;
     this.bodyLayer.position.set(baseX, torsoY);
@@ -459,7 +456,7 @@ export class GrayboxRenderer {
     const legGap = geo.legGap;
     const phase = rs.pose.legPhase;
     const walkAmount = Math.min(1, Math.max(0, rs.speedRatio * 2.8));
-    const legTop = torsoY - Math.max(1, Math.round(legH * 0.12));
+    const legTop = torsoY - Math.max(1, Math.round(legH * 0.08));
     const maxFootY = groundY - 1;
     const frontX = dir * Math.round(geo.bodyW * 0.27);
     const backX = -dir * Math.round(geo.bodyW * 0.31);
@@ -505,14 +502,15 @@ export class GrayboxRenderer {
     }
 
     let tailX = Math.round(baseX - dir * geo.tailAttachPx);
-    let tailY = Math.round(torsoY - geo.bodyH * 0.68 * poseScale);
+    let tailY = Math.round(torsoY - geo.bodyH * 0.6 * poseScale);
     let tailAngle = p.tailAnglesDeg[0] ?? 0;
     for (let i = 0; i < this.tailSegments.length; i++) {
       const seg = this.tailSegments[i];
       if (!seg) continue;
       const segAngleDeg = p.tailAnglesDeg[i] ?? tailAngle;
       tailAngle = segAngleDeg;
-      const visualAngle = facingRight ? 180 - segAngleDeg : segAngleDeg;
+      const wagAngle = segAngleDeg - 16;
+      const visualAngle = facingRight ? 180 - wagAngle : wagAngle;
       seg.position.set(tailX, tailY);
       seg.rotation = (visualAngle * Math.PI) / 180;
       const rad = (visualAngle * Math.PI) / 180;
@@ -521,14 +519,14 @@ export class GrayboxRenderer {
     }
     this.tailLayer.position.set(0, 0);
 
-    const headY = Math.round(torsoY - geo.bodyH * poseScale * 0.54 + Math.round(rs.pose.headDropPx * poseScale));
+    const headY = Math.round(torsoY - geo.bodyH * poseScale * 0.47 + Math.round(rs.pose.headDropPx * poseScale));
     const headX = Math.round(baseX + dir * geo.headForwardPx);
     this.headLayer.position.set(headX, headY);
     this.headLayer.scale.set(dir, 1);
     this.headLayer.rotation = ((p.rotationDeg * Math.PI) / 180) * 0.5;
 
     const earOnTop = geo.earShape !== 'drop';
-    const earBaseY = headY - Math.round(geo.headH * (earOnTop ? 0.92 : 0.82));
+    const earBaseY = headY - Math.round(geo.headH * (earOnTop ? 0.86 : 0.76));
     const earBack = headX - dir * Math.round(geo.headW * 0.32);
     const earFront = headX + dir * Math.round(geo.headW * 0.06);
     const jitterRad = (p.earJitterDeg * Math.PI) / 180;
@@ -544,8 +542,8 @@ export class GrayboxRenderer {
   private redrawEyes(rs: RenderState, headW: number, headH: number, coat: CoatConfig): void {
     const g = this.eyesGfx;
     g.clear();
-    const eyeX = Math.round(headW * 0.14);
-    const eyeY = -Math.round(headH * 0.58);
+    const eyeX = Math.round(headW * 0.16);
+    const eyeY = -Math.round(headH * 0.54);
     const eyeW = Math.max(2, Math.round(headW * 0.16));
     const eyeH = Math.max(2, Math.round(headH * 0.18));
     const rawClosure = rs.pose.sleeping ? 1 : Math.max(rs.procedural.eyeClosure, rs.pose.eyeClosure);
