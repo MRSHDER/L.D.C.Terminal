@@ -151,6 +151,7 @@ export function Stage(): React.JSX.Element {
     };
     const result = intentForDrop(obj, resolveDropTarget(at, createDropZones(snapshot.position, objects)), at);
     setLastIntent(result);
+    engine.applyIntent(result.intent);
     resetObject(obj.id);
   };
 
