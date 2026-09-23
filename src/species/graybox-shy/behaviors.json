@@ -44,8 +44,12 @@
   },
 
   "microBehaviors": [
-    { "id": "earTwitch", "chancePerMin": 2 },
-    { "id": "blink", "chancePerMin": 10 }
+    { "id": "earTwitch", "chancePerMin": 3 },
+    { "id": "blink", "chancePerMin": 11 },
+    { "id": "headShake", "chancePerMin": 0.8 },
+    { "id": "yawn", "chancePerMin": 3.5, "when": "mood.arousal < 0.4" },
+    { "id": "stretch", "chancePerMin": 1.5, "when": "justWokeUp" },
+    { "id": "sigh", "chancePerMin": 3.5 }
   ],
 
   "extraRandomness": 0.05

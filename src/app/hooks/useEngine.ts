@@ -263,6 +263,11 @@ export function useEngine(designWidth: number, designHeight: number): UseEngineR
         renderState: () => world.getRenderState(),
         /** 场景图节点数（若为 0 说明构造期就出了问题） */
         stageChildren: () => renderer.app.stage.children.length,
+        /** 微行为快照（Alpha 打磨：核验"它自己有哪些小动作"） */
+        micro: () => world.microSnapshot,
+        /** 羁绊 / 情绪快照 */
+        bond: () => world.bondSnapshot,
+        mood: () => world.moodSnapshot,
       };
     }
 

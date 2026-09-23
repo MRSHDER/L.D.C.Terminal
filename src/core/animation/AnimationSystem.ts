@@ -337,7 +337,10 @@ export class AnimationSystem {
         bodyHeightRatio: this.pose.bodyHeightRatio,
         groundOffsetPx: 0,
         legPhase: Math.sin(this.legPhase),
-        headDropPx: this.pose.headDropPx,
+        // ★ 微行为的额外低头（哈欠/伸懒腰）叠加在姿态低头之上。
+        //   用加法而非覆盖：姿态低头表达"坐着/睡着"，
+        //   微行为低头表达"打了个哈欠" —— 两者可以同时成立。
+        headDropPx: this.pose.headDropPx + (ctx.extraHeadDropPx ?? 0),
         sleeping: this.pose.sleeping,
         eyeClosure: this.pose.eyeClosure,
       },

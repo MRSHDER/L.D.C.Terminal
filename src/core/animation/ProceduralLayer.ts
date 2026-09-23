@@ -59,6 +59,26 @@ export interface ProceduralContext {
   readonly arousal: number;
   /** 清醒度 0..1。低值 → 眨眼变多、呼吸变慢变深 */
   readonly alertness: number;
+
+  // ── Alpha 打磨：微行为修饰（全部可选，缺省不影响表现）──
+  //
+  // 这些量由 MicroBehaviorSystem 提供，用于在基础过程动画上叠加
+  // 短暂的小动作（抖耳、哈欠、伸懒腰）。
+  //
+  // ★ 设计约束：修饰量只能是「倍率」或「增量」，不能是「覆盖」。
+  //   否则微行为会打断呼吸/眨眼等持续生命体征，
+  //   玩家会看到"它突然不动了" —— 比不做微行为更糟。
+
+  /** 耳朵抖动幅度倍率（1 = 无影响） */
+  readonly earJitterScale?: number;
+  /** 额外的眼睛闭合 0..1（哈欠/眨眼） */
+  readonly extraEyeClosure?: number;
+  /** 身体纵向拉伸倍率（伸懒腰） */
+  readonly bodyStretchScale?: number;
+  /** 额外头部下沉（像素） */
+  readonly extraHeadDropPx?: number;
+  /** 额外整体垂直偏移（像素） */
+  readonly extraOffsetY?: number;
 }
 
 const NEUTRAL_CONTEXT: ProceduralContext = {
@@ -174,7 +194,11 @@ export class ProceduralLayer {
       this.earTriggerAccumMs = 0;
       if (this.rng.chance(0.5)) this.earPulse.trigger(1);
     }
-    const earJitterDeg = this.earPulse.value() * a.ear.jitterDeg;
+    // ★ 微行为修饰：抖耳类微行为把基础抖动幅度放大数倍。
+    //   之所以用「倍率」而非「覆盖」，是为了让基础抖动继续存在 ——
+    //   微行为是"更用力地抖一下"，不是"换一套抖动"。
+    const earJitterDeg =
+      this.earPulse.value() * a.ear.jitterDeg * (ctx.earJitterScale ?? 1);
 
     // ── 尾巴（分段延迟，产生鞭状跟随）──
     const tailSegments = Math.max(1, a.tail.segments);
@@ -195,13 +219,30 @@ export class ProceduralLayer {
       tailAngles.push(a.tail.baseAngleDeg + swing * attenuation);
     }
 
+    // ── 微行为叠加（Alpha 打磨）──
+    //
+    // ★ 全部以「倍率」或「增量」形式叠加，绝不覆盖基础值。
+    //   这样呼吸、眨眼、尾巴摆动等生命体征在任何微行为播放期间都不中断，
+    //   微行为只是让它们短暂地更明显一点。
+    //
+    //   反面设计（已避免）：若微行为直接设定 eyeClosure=1，
+    //   哈欠结束后眼睛会"啪"地睁开 —— 看起来像故障。
+    //   用 max 叠加则会在哈欠结束时自然回落。
+    const stretch = ctx.bodyStretchScale ?? 1;
+    const appliedScaleY = scaleY * stretch;
+    // 体积补偿：拉伸时横向略收，保持"肉量不变"的观感
+    const appliedScaleX = (1 - (scaleY - 1) * 0.35) * (1 - (stretch - 1) * 0.5);
+
+    const microEye = ctx.extraEyeClosure ?? 0;
+    const appliedEyeClosure = Math.max(eyeClosure, microEye);
+
     return {
-      offsetY: breath + floatY,
+      offsetY: breath + floatY + (ctx.extraOffsetY ?? 0),
       offsetX: this.swayOsc.value() * 0.5,
-      scaleY,
-      scaleX: 1 - (scaleY - 1) * 0.35, // 体积补偿：纵向拉伸时横向略收
+      scaleY: appliedScaleY,
+      scaleX: appliedScaleX,
       rotationDeg: this.tiltOsc.value() * (0.4 + ctx.speedRatio * 0.5),
-      eyeClosure,
+      eyeClosure: appliedEyeClosure,
       blinkPhase,
       earJitterDeg,
       tailAnglesDeg: tailAngles,

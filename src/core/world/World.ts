@@ -40,6 +40,7 @@ import { resolveGrayboxSize, INTERACTION_STATE_IDS } from '../data/defaults';
 import { BondSystem } from '../affection/BondSystem';
 import { MoodSystem, type MoodModifiers } from '../affection/MoodSystem';
 import { InteractionSystem } from '../interaction/InteractionSystem';
+import { MicroBehaviorSystem } from '../behavior/MicroBehaviorSystem';
 import { BB_BOND_SYSTEM, BB_MOOD_SYSTEM } from './blackboardAccess';
 
 export interface WorldOptions {
@@ -73,6 +74,8 @@ export class World {
   private readonly bond: BondSystem;
   private readonly mood: MoodSystem;
   private readonly interaction: InteractionSystem;
+  /** ★ Alpha 打磨：微行为（它自己顺手做的小动作） */
+  private readonly micro: MicroBehaviorSystem;
 
   /** 玩家位置（狗看向/走向的目标） */
   private playerX: number;
@@ -80,6 +83,9 @@ export class World {
 
   /** 走开后的"闹别扭"剩余时间（ms） */
   private sulkRemainingMs = 0;
+
+  /** 上一个状态，用于判断"刚睡醒"这类跨状态条件 */
+  private previousState: StateId = 'Idle';
 
   private bounds: { w: number; h: number };
   private tick = 0;
@@ -135,6 +141,7 @@ export class World {
       this.behaviors.annoyanceBias ?? {},
     );
     this.interaction = new InteractionSystem(this.species);
+    this.micro = new MicroBehaviorSystem(this.behaviors, this.rng);
 
     // ★ 把系统引用写入黑板，供纯函数式的守卫/打分读取。
     //   这是避免「StateContext ← 系统」循环依赖的关键设计，
@@ -249,6 +256,11 @@ export class World {
   /** 情绪快照 */
   get moodSnapshot() {
     return this.mood.snapshot();
+  }
+
+  /** 微行为快照（供调试面板与自动化核验） */
+  get microSnapshot() {
+    return this.micro.snapshot();
   }
 
   /** 情绪修饰表（动画层读取） */
@@ -430,6 +442,7 @@ export class World {
     this.updateInteraction(dtMs);
     this.updateMood(dtMs);
     this.updateBond(dtMs);
+    this.updateMicroBehaviors(dtMs);
 
     // ── ③ 决策节流 ──
     // 狗不是每帧都在"思考"。decisionIntervalMs 越大，思考越慢。
@@ -548,12 +561,25 @@ export class World {
 
     // ★ Milestone 2：过程动画由**真实情绪**驱动，而不是由速度猜测。
     //   这让"被摸时尾巴摆得欢"这类表现自动成立，无需为每个状态写动画。
+    //
+    // ★ Alpha 打磨：叠加微行为修饰。
+    //   微行为不接管动画，只**修饰**基础过程动画 ——
+    //   因此呼吸、眨眼等生命体征在任何时候都不中断，
+    //   而抖耳、哈欠、伸懒腰只是短暂地放大或偏移某些参数。
     const moodMods = this.mood.modifiers();
+    const microFx = this.micro.effect();
+
     const proceduralCtx: ProceduralContext = {
       moving: this.blackboard.moving,
       speedRatio,
       arousal: moodMods.arousal,
       alertness: this.computeAlertness(),
+      // 微行为修饰（缺省时不影响任何表现）
+      earJitterScale: microFx.earJitterScale,
+      extraEyeClosure: microFx.eyeClosure,
+      bodyStretchScale: microFx.bodyStretchScale,
+      extraHeadDropPx: microFx.headDropPx,
+      extraOffsetY: microFx.offsetY,
     };
 
     this.renderState = this.animation.update(dtMs, proceduralCtx, {
@@ -673,6 +699,121 @@ export class World {
   }
 
   /**
+   * 推进微行为。
+   *
+   * ★ 微行为**只在狗安静地待着时**才允许触发。
+   *
+   *   理由：微行为表达的是"它自己的小动作"，
+   *   而在被抚摸、正在回应玩家、或刚被惊醒时，
+   *   它的注意力在玩家身上 —— 此时插入打哈欠会显得心不在焉，
+   *   反而破坏"它在回应我"的感受。
+   *
+   *   允许触发的时机：
+   *     - 当前处于 Idle / Sit / Sleep 这类静止状态
+   *     - 没有被抚摸、没有互动进行中
+   *     - 不处于烦躁状态（烦躁时它忙着不高兴，不打哈欠）
+   */
+  private updateMicroBehaviors(dtMs: number): void {
+    const bb = this.blackboard;
+
+    const st = this.currentState;
+    const isQuietState = st === 'Idle' || st === 'Sit' || st === 'Sleep';
+    const busyInteracting = bb['beingPetted'] === true || bb['enjoying'] === true;
+    const annoyed = this.mood.isAnnoyed;
+
+    const allowed = isQuietState && !busyInteracting && !annoyed && !this.isSulking;
+
+    if (!allowed) {
+      // 玩家一介入就立刻中断当前微行为，避免"摸它时它还在打哈欠"
+      this.micro.interrupt();
+    }
+
+    this.micro.update(dtMs, allowed, (expr) => this.evalMicroCondition(expr));
+  }
+
+  /**
+   * 求值微行为的 `when` 条件表达式。
+   *
+   * ★ 刻意实现为一个**极小的白名单求值器**，而不是 eval / new Function。
+   *
+   *   原因：`when` 来自 species 的 JSON 文件。
+   *   将来犬种会由社区贡献，用 eval 执行任意 JSON 字符串等于
+   *   把远程代码执行漏洞直接嵌进引擎。
+   *   白名单求值器只认识少量变量与比较运算符，
+   *   写错只会得到 false，不会执行任何代码。
+   *
+   * 支持的形式（刻意保持极简）：
+   *   "energy < 0.4"
+   *   "mood.arousal > 0.3"
+   *   "justWokeUp"
+   *   "isNight"
+   *
+   * 不支持逻辑运算（&&/||）—— 需要时再扩展，
+   * 过早引入表达式语言会变成一个小的编程语言项目。
+   */
+  private evalMicroCondition(expr: string): boolean {
+    const trimmed = expr.trim();
+
+    // 无运算符：当作布尔标志
+    const cmp = /^([\w.]+)\s*(<=|>=|<|>|===|==)\s*(-?[\d.]+)$/.exec(trimmed);
+    if (!cmp) {
+      const flag = this.microFlags[trimmed];
+      return flag === true;
+    }
+
+    const [, lhs, op, rhsRaw] = cmp;
+    const rhs = Number.parseFloat(rhsRaw!);
+    const value = this.microVariable(lhs!);
+    if (value === null) return false;
+
+    switch (op) {
+      case '<':
+        return value < rhs;
+      case '<=':
+        return value <= rhs;
+      case '>':
+        return value > rhs;
+      case '>=':
+        return value >= rhs;
+      default:
+        return value === rhs;
+    }
+  }
+
+  /** 微行为条件可读取的变量 */
+  private microVariable(name: string): number | null {
+    const mood = this.mood.snapshot();
+    const t = this.species.personality.temperament;
+
+    switch (name) {
+      case 'energy':
+        // "精力"在 Milestone 4 接入真实需求前，用性格维度代替
+        return t.energy;
+      case 'mood.arousal':
+        return mood.arousal;
+      case 'mood.valence':
+        return mood.valence;
+      case 'mood.annoyance':
+        return mood.annoyance;
+      case 'mood.comfort':
+        return mood.comfort;
+      case 'bond':
+        return this.bond.value;
+      default:
+        return null;
+    }
+  }
+
+  /** 微行为条件可读取的布尔标志 */
+  private get microFlags(): Record<string, boolean> {
+    return {
+      justWokeUp: this.blackboard['justWokeUp'] === true,
+      isMoving: this.blackboard.moving === true,
+      isSleeping: this.currentState === 'Sleep',
+    };
+  }
+
+  /**
    * 状态切换后的副作用。
    *
    * 主要是"走开"这个行为需要设置闹别扭冷却 ——
@@ -680,6 +821,18 @@ export class World {
    */
   private onStateChanged(state: StateId): void {
     const bb = this.blackboard;
+
+    // ★ 记录"刚睡醒"标志 —— 供 microBehaviors 的 when 条件使用。
+    //
+    //   为什么需要这个标志：伸懒腰（stretch）只在刚睡醒时出现。
+    //   没有它，stretch 的 when 永远为 false，实测触发 0 次 ——
+    //   配置里声明了却永远不发生，属于"死数据"。
+    const prev = this.previousState;
+    if (prev === 'Sleep' && state !== 'Sleep') {
+      bb['justWokeUp'] = true;
+    } else if (state === 'Sleep') {
+      bb['justWokeUp'] = false;
+    }
 
     if (state === 'Retreat') {
       this.sulkRemainingMs = this.species.affection.annoyance.sulkMs;
@@ -693,6 +846,8 @@ export class World {
     if (state === 'PetEnjoy') {
       this.bus.emit('interaction:accepted', { intent: 'PET' });
     }
+
+    this.previousState = state;
   }
 
   /** 清除"刚刚被抚摸"的一次性脉冲 */

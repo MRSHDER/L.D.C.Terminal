@@ -10,6 +10,30 @@
  * 两层校验的字段集合必须保持一致 —— 修改 types.ts 时两处都要更新。
  */
 
+/**
+ * 已知微行为 id。
+ *
+ * ★ 这里刻意**重复声明**而不是 import MicroBehaviorSystem 的常量。
+ *
+ *   原因：依赖方向。data/ 是底层（数据契约与校验），
+ *   behavior/ 是上层（行为实现）。让 data/ 依赖 behavior/
+ *   会形成反向依赖，破坏分层。
+ *
+ *   代价是两处清单可能漂移。为此 tools/validate-species.ts
+ *   在构建期会交叉比对两者，不一致时直接报错 ——
+ *   用工具保证一致性，而不是靠人记得同步。
+ */
+export const KNOWN_MICRO_BEHAVIORS_IDS: readonly string[] = [
+  'earTwitch',
+  'headShake',
+  'yawn',
+  'stretch',
+  'sigh',
+  'blink',
+];
+
+const KNOWN_MICRO_BEHAVIORS = new Set<string>(KNOWN_MICRO_BEHAVIORS_IDS);
+
 export type ValidationErrors = string[];
 
 const isNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -432,7 +456,21 @@ export function validateBehaviorsShape(raw: Record<string, unknown>): Validation
           errors.push(`microBehaviors[${i}] 必须是对象`);
           return;
         }
-        if (!isString(m['id'])) errors.push(`microBehaviors[${i}].id 必须是字符串`);
+        if (!isString(m['id'])) {
+          errors.push(`microBehaviors[${i}].id 必须是字符串`);
+        } else if (!KNOWN_MICRO_BEHAVIORS.has(m['id'])) {
+          // ★ 未知 id 必须报错，不能静默忽略。
+          //
+          //   微行为库在引擎里是固定的一组实现（见 MicroBehaviorSystem）。
+          //   写错 id（如 "headTilt" 而库里只有 "headShake"）时，
+          //   运行时只会静默跳过 —— 这个微行为永远不会发生，
+          //   而配置看起来完全正常。开发者会以为"它偶尔不触发"，
+          //   实际是**从未触发**。这类"死配置"必须在构建期拦截。
+          errors.push(
+            `microBehaviors[${i}].id = "${m['id']}" 不是已知的微行为。` +
+              `可用: ${[...KNOWN_MICRO_BEHAVIORS].join(', ')}`,
+          );
+        }
         if (!isNumber(m['chancePerMin']) || m['chancePerMin'] < 0) {
           errors.push(`microBehaviors[${i}].chancePerMin 必须是非负数字`);
         }
