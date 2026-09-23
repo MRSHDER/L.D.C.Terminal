@@ -1,6 +1,6 @@
 /**
  * L.D.C. — 渲染器（PixiJS）
- * 狗与房间用生成像素图，不再用 Graphics 拼形状。
+ * 狗用生成像素图。Pixi 8 不能把 data URL 当 Asset id，必须先解码成 Image。
  */
 
 import {
@@ -23,6 +23,22 @@ export interface GrayboxRendererOptions {
   readonly designHeight: number;
   readonly background?: number;
   readonly showGrid?: boolean;
+}
+
+async function textureFromDataUrl(src: string): Promise<Texture> {
+  const img = new Image();
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error('sprite decode failed'));
+    img.src = src;
+  });
+  const texture = Texture.from(img);
+  try {
+    texture.source.scaleMode = 'nearest';
+  } catch {
+    /* pixi version difference */
+  }
+  return texture;
 }
 
 export class GrayboxRenderer {
@@ -65,8 +81,7 @@ export class GrayboxRenderer {
     this.app.canvas.style.height = '100%';
     this.app.ticker.stop();
 
-    const texture = Texture.from(SPRITES.dog);
-    texture.source.scaleMode = 'nearest';
+    const texture = await textureFromDataUrl(SPRITES.dog);
     const dog = new Sprite(texture);
     dog.anchor.set(0.52, 0.92);
     dog.roundPixels = true;
