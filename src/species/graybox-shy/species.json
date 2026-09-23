@@ -13,9 +13,20 @@
   },
 
   "physical": {
-    "bodyScale": 0.92,
-    "hitbox": { "w": 44, "h": 33, "anchorY": 0.9 },
-    "grayboxTint": 16777215
+    "bodyScale": 0.96,
+    "hitbox": { "w": 50, "h": 38, "anchorY": 0.9 },
+    "grayboxTint": 16777215,
+    "silhouette": {
+      "bodyLength": 1.16,
+      "chestDepth": 0.84,
+      "legLength": 0.3,
+      "headForward": 0.4,
+      "headSize": 0.54,
+      "snoutLength": 0.26,
+      "earShape": "drop",
+      "earLength": 0.66,
+      "tailAttach": 0.14
+    }
   },
 
   "personality": {
