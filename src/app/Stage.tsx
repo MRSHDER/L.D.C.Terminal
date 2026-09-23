@@ -25,6 +25,7 @@ import {
   type InteractionObjectState,
 } from '@core/interaction/ObjectInteraction';
 import './Stage.css';
+import './InteractionObjects.css';
 
 /** 设计分辨率：低分辨率像素风的基础画布尺寸 */
 const DESIGN_W = 320;
