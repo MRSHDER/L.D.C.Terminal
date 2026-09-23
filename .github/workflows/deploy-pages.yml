@@ -1,0 +1,94 @@
+# L.D.C. — 自动部署到 GitHub Pages
+#
+# 触发条件：
+#   - 推送到 main
+#   - 手动触发（Actions 页面点 Run workflow）
+#
+# ★ 为什么用 GitHub Pages：
+#   这是唯一不需要第三方账号、完全由仓库自身管理的部署方式。
+#   推送后自动构建并发布，网址固定为：
+#     https://mrshder.github.io/L.D.C.Terminal/
+#
+# ★ 关于 base path（最容易出错的一点）：
+#   GitHub Pages 的项目站点部署在 /<仓库名>/ 子路径下，
+#   而不是域名根目录。若 vite 的 base 仍是默认的 '/'，
+#   打包产物里的资源引用会指向 /assets/xxx.js ——
+#   实际却在 /L.D.C.Terminal/assets/xxx.js，于是整站白屏。
+#   因此构建时必须传 --base=/<仓库名>/。
+#
+#   这里直接写死仓库名而不是用 github.event.repository.name，
+#   因为在 job 级别无法可靠地取到（且换仓库名的情况极罕见）。
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# GITHUB_TOKEN 的权限：Pages 部署需要这三项
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时间只允许一个部署。cancel-in-progress: false ——
+# 让正在进行的部署跑完，避免发布到一半被中断留下坏产物。
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # 数据校验先跑 —— 若犬种 JSON 有问题，直接失败，
+      # 不会把一个坏产物发布出去。
+      - name: Validate species data
+        run: npm run species:validate
+
+      # 行为回归：三个犬种的互动检查必须全通过。
+      # 这一步把"手感"变成了构建门槛 —— 改坏了会被拦住。
+      - name: Interaction regression test
+        run: |
+          for s in graybox graybox-shy graybox-swift; do
+            echo "--- $s ---"
+            npm run pet -- "$s"
+          done
+
+      - name: Annoyance calibration
+        run: npm run calibrate
+
+      - name: Build
+        run: npm run build -- --base=/L.D.C.Terminal/
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
