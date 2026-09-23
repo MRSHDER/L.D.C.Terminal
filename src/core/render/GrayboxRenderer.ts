@@ -53,7 +53,7 @@ function pickDogTexture(rs: RenderState, textures: Texture[]): Texture {
     return textures[rs.frameIndex % count] ?? idle;
   }
   if (SIT_CLIPS.has(rs.clipId) || rs.pose.sleeping) {
-    return textures[Math.min(count - 1, 0)] ?? idle;
+    return textures[0] ?? idle;
   }
   return idle;
 }
@@ -141,7 +141,7 @@ export class GrayboxRenderer {
     if (!room?.showGrid) return;
     const step = 24;
     for (let x = 0; x <= w; x += step) this.grid.rect(x, 0, 1, h).fill({ color: PALETTE.grid });
-    for (let y = 0; y <= h; y += step) this.grid.rect(0, y, 1, w).fill({ color: PALETTE.grid });
+    for (let y = 0; y <= h; y += step) this.grid.rect(0, y, w, 1).fill({ color: PALETTE.grid });
   }
 
   render(rs: RenderState): void {
@@ -154,14 +154,9 @@ export class GrayboxRenderer {
     const dogTexture = pickDogTexture(rs, this.dogTextures);
     if (dogTexture && this.dog.texture !== dogTexture) this.dog.texture = dogTexture;
 
-    const scaleBase = 1.06;
-    const poseScaleY = Math.max(0.58, rs.pose.bodyHeightRatio || 1);
-    const proceduralScaleY = p.scaleY || 1;
-    const scaleX = dir * scaleBase * Math.abs(p.scaleX || 1);
-    const scaleY = scaleBase * poseScaleY * proceduralScaleY;
-
+    const scale = 1;
     const baseX = Math.round(rs.x + p.offsetX);
-    const baseY = Math.round(rs.y + p.offsetY + rs.pose.groundOffsetPx);
+    const baseY = Math.round(rs.y + p.offsetY);
 
     const shadowW = moving ? 42 + Math.round(rs.speedRatio * 6) : 40;
     const shadowH = moving ? 5 : 4;
@@ -172,8 +167,8 @@ export class GrayboxRenderer {
     });
 
     this.dog.position.set(baseX, baseY);
-    this.dog.scale.set(scaleX, Math.abs(scaleY));
-    this.dog.alpha = rs.pose.sleeping ? 0.92 : 1;
+    this.dog.scale.set(dir * scale, scale);
+    this.dog.alpha = 1;
   }
 
   renderFrame(): void {
