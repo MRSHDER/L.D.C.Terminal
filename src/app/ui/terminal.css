@@ -1,4 +1,4 @@
-/* L.D.C. Terminal chrome — 480×270 design, integer scaled. */
+/* L.D.C. Terminal chrome — 320×264 design, integer scaled. */
 
 :root {
   --ldc-bg-deep: #101116;
@@ -24,10 +24,10 @@
 
 .ldc-shell {
   position: relative;
-  width: 480px;
-  height: 270px;
+  width: 320px;
+  height: 264px;
   display: grid;
-  grid-template-rows: 24px 200px 46px;
+  grid-template-rows: 16px 200px 48px;
   background: var(--ldc-bg-mid);
   color: var(--ldc-ink);
   font-family: var(--ldc-font-mono);
@@ -49,33 +49,16 @@
 .ldc-shell--immerse .ldc-term-header,
 .ldc-shell--immerse .ldc-dock,
 .ldc-shell--immerse .ldc-hud,
-.ldc-shell--immerse .ldc-archive,
-.ldc-shell--immerse .ldc-shell__gutter {
+.ldc-shell--immerse .ldc-archive {
   display: none;
 }
 
 .ldc-shell__mid {
-  display: grid;
-  grid-template-columns: 80px 320px 80px;
+  position: relative;
   min-height: 0;
   background: #0b0c10;
 }
 
-.ldc-shell--immerse .ldc-shell__mid {
-  grid-template-columns: 320px;
-}
-
-.ldc-shell__gutter {
-  border-right: 1px solid #121318;
-}
-
-.ldc-shell__gutter--right {
-  border-right: 0;
-  border-left: 1px solid #121318;
-  padding: 8px 6px;
-}
-
-.ldc-shell__room .ldc-room__frame,
 .ldc-shell__mid .ldc-room__frame {
   width: 320px;
   height: 200px;
@@ -89,7 +72,7 @@
   padding: 0 8px;
   border-bottom: 1px solid var(--ldc-line);
   background: var(--ldc-bg-mid);
-  min-height: 24px;
+  min-height: 16px;
 }
 
 .ldc-term-header__brand {
@@ -100,8 +83,8 @@
 }
 
 .ldc-term-header__mark {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   flex: 0 0 auto;
   border: 1px solid var(--ldc-accent);
   background: var(--ldc-bg-soft);
@@ -114,19 +97,14 @@
 }
 
 .ldc-term-header__title {
-  font-size: 9px;
+  font-size: 8px;
   letter-spacing: 0.14em;
   font-weight: 700;
   line-height: 1;
 }
 
 .ldc-term-header__sub {
-  font-size: 6px;
-  letter-spacing: 0.12em;
-  color: var(--ldc-ink-dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: none;
 }
 
 .ldc-term-header__specimen {
@@ -134,7 +112,7 @@
   letter-spacing: 0.12em;
   color: var(--ldc-accent);
   border: 1px solid var(--ldc-line);
-  padding: 2px 5px;
+  padding: 1px 4px;
 }
 
 .ldc-term-header__meta {
@@ -151,8 +129,8 @@
 }
 
 .ldc-icon-btn {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   padding: 0;
   color: var(--ldc-ink-dim);
   background: var(--ldc-bg-soft);
@@ -177,10 +155,18 @@
 }
 
 .ldc-hud {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 4;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  opacity: 0.5;
+  gap: 5px;
+  min-width: 78px;
+  padding: 4px 5px;
+  background: rgb(16 17 22 / 0.72);
+  border: 1px solid #1d1f27;
+  opacity: 0.72;
   pointer-events: none;
 }
 
@@ -201,11 +187,24 @@
   color: var(--ldc-accent);
 }
 
+.ldc-hud__stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ldc-hud__label {
+  font-size: 5px;
+  letter-spacing: 0.12em;
+  color: var(--ldc-ink-dim);
+  line-height: 1;
+}
+
 .ldc-hud__bar {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
   gap: 1px;
-  height: 6px;
+  height: 5px;
 }
 
 .ldc-hud__cell {
@@ -225,8 +224,8 @@
 
 .ldc-toast {
   position: absolute;
-  left: 240px;
-  top: 80px;
+  left: 50%;
+  top: 56px;
   z-index: 5;
   transform: translate(-50%, 0);
   padding: 3px 6px;
@@ -247,24 +246,26 @@
 
 .ldc-dock {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 80px;
+  grid-template-columns: minmax(0, 1fr) 64px;
   border-top: 1px solid var(--ldc-line);
   background: #14151b;
-  min-height: 46px;
+  min-height: 48px;
 }
 
 .ldc-dock__slots {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   min-width: 0;
 }
 
 .ldc-dock__slot,
 .ldc-archive-door {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 46px;
+  gap: 2px;
+  min-height: 48px;
   padding: 0;
   color: var(--ldc-ink);
   background: transparent;
@@ -272,13 +273,21 @@
   border-right: 1px solid var(--ldc-line);
   cursor: pointer;
   font: inherit;
+  touch-action: none;
 }
 
 .ldc-dock__slot img {
-  width: 22px;
-  height: 16px;
+  width: 24px;
+  height: 18px;
   image-rendering: pixelated;
   pointer-events: none;
+}
+
+.ldc-dock__label {
+  font-size: 6px;
+  letter-spacing: 0.12em;
+  color: var(--ldc-ink-dim);
+  line-height: 1;
 }
 
 .ldc-dock__slot--on {
@@ -286,19 +295,15 @@
   background: #1b1c24;
 }
 
-.ldc-dock__glyph {
-  width: 16px;
-  height: 12px;
-  border: 1px solid var(--ldc-ink-dim);
+.ldc-dock__slot--on .ldc-dock__label {
+  color: var(--ldc-accent);
 }
 
 .ldc-archive-door {
-  flex-direction: column;
-  gap: 1px;
   border-right: 0;
   border-left: 1px solid var(--ldc-line);
   letter-spacing: 0.14em;
-  font-size: 7px;
+  font-size: 6px;
   color: var(--ldc-ink-dim);
 }
 
@@ -309,10 +314,10 @@
 
 .ldc-archive {
   position: absolute;
-  top: 24px;
+  top: 0;
   right: 0;
-  bottom: 46px;
-  width: 240px;
+  bottom: 0;
+  width: 180px;
   z-index: 6;
   padding: 10px;
   background: rgb(16 17 22 / 0.96);
@@ -340,6 +345,32 @@
 }
 
 .ldc-archive li {
-  padding: 5px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 0;
   border-top: 1px solid var(--ldc-line);
+}
+
+.ldc-archive li b {
+  color: var(--ldc-ink);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+}
+
+.ldc-target {
+  position: absolute;
+  pointer-events: none;
+  border: 1px solid var(--ldc-accent);
+  background: rgb(142 197 232 / 0.12);
+  z-index: 3;
+}
+
+.ldc-target--mouth {
+  border-color: var(--ldc-ok);
+  background: rgb(127 216 160 / 0.14);
+}
+
+.ldc-target--bowl {
+  border-color: var(--ldc-accent);
 }
