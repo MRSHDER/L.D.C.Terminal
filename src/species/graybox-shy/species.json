@@ -31,38 +31,88 @@
 
   "personality": {
     "temperament": {
-      "gentleness": 0.72,
-      "energy": 0.28,
-      "curiosity": 0.35,
+      "gentleness": 0.85,
+      "energy": 0.35,
+      "curiosity": 0.3,
       "stubbornness": 0.4,
-      "shyness": 0.82,
-      "clinginess": 0.78,
-      "playfulness": 0.32,
-      "obedience": 0.55,
-      "randomness": 0.28
+      "shyness": 0.88,
+      "clinginess": 0.8,
+      "playfulness": 0.25,
+      "obedience": 0.5,
+      "randomness": 0.3
     },
-    "traits": ["shy", "slow-to-trust"]
+    "traits": ["shy", "slow-warming", "devoted"]
   },
 
   "cognition": {
     "decisionIntervalMs": 780,
-    "reactionDelayMs": [400, 1200],
-    "attentionSpanMs": 5000,
-    "memorySpanMs": 28000,
-    "learningRate": 0.08
+    "reactionDelayMs": [500, 1500],
+    "attentionSpanMs": 7000,
+    "memorySpanMs": 45000,
+    "learningRate": 0.06
+  },
+
+  "animation": {
+    "targetFps": 8,
+    "breath": { "freqHz": 0.19, "ampPx": 1.4, "bodyScaleY": 0.019 },
+    "blink": { "baseIntervalMs": 5200, "varianceMs": 2800, "durationMs": 160 },
+    "tail": { "segments": 3, "baseAngleDeg": 3, "maxSwingDeg": 12, "delayPerSegMs": 110 },
+    "ear": { "jitterDeg": 3, "triggerBias": 0.15 },
+    "float": { "ampPx": 0.7, "freqHz": 0.11 },
+    "transitions": {},
+    "defaultTransitionMs": 320
   },
 
   "locomotion": {
-    "walkSpeedPx": 18,
-    "runSpeedPx": 42,
-    "turnRateDeg": 160,
-    "idleWanderRadiusPx": 28,
+    "walkSpeedPx": 22,
+    "runSpeedPx": 48,
+    "turnRateDeg": 150,
+    "idleWanderRadiusPx": 34,
     "wanderChancePerMin": 1.6,
-    "arriveThresholdPx": 3
+    "arriveThresholdPx": 4
   },
 
   "resources": {
     "assetRoot": "",
     "animationClips": {}
+  },
+
+  "affection": {
+    "bonding": {
+      "gainPerPet": 0.2,
+      "decayPerSec": 0.009,
+      "penaltyPerSecWhenAnnoyed": 0.09,
+      "requiresTouchToNotice": true,
+      "ladder": [
+        { "atBond": 0.0, "state": "LookAt", "label": { "zh": "远远看着你", "en": "Watches from afar" } },
+        { "atBond": 0.4, "state": "Approach", "label": { "zh": "犹豫着靠近", "en": "Hesitantly approaches" } },
+        { "atBond": 0.66, "state": "Sit", "label": { "zh": "终于坐下来", "en": "Finally sits down" } },
+        { "atBond": 0.86, "state": "WagTail", "label": { "zh": "轻轻摇尾巴", "en": "Tail wags softly" } },
+        { "atBond": 0.96, "state": "PetEnjoy", "label": { "zh": "完全信任", "en": "Fully trusts you" } }
+      ]
+    },
+    "petting": {
+      "minEffectiveMs": 140,
+      "pleasureBase": 0.4,
+      "arousalGain": 0.18,
+      "tolerance": 2
+    },
+    "annoyance": {
+      "windowMs": 3600,
+      "threshold": 6,
+      "annoyancePerExcess": 0.4,
+      "decayPerSec": 0.16,
+      "leaveAt": 0.7,
+      "sulkMs": 8200
+    }
+  },
+
+  "room": {
+    "floorLineRatio": 0.74,
+    "floorColor": 1973798,
+    "floorShadeColor": 1447452,
+    "wallColor": 1184280,
+    "showGrid": false,
+    "playerAnchor": { "xRatio": 0.5, "yRatio": 1.15 }
   }
 }
