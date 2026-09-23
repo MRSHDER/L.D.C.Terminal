@@ -6,8 +6,8 @@ import { ItemDock, type DockItemId } from './ItemDock';
 import { ArchivePanel } from './ArchivePanel';
 import './terminal.css';
 
-const SHELL_W = 480;
-const SHELL_H = 270;
+const SHELL_W = 320;
+const SHELL_H = 264;
 const ROOM_W = 320;
 const ROOM_H = 200;
 
@@ -19,6 +19,7 @@ export function TerminalShell(props: {
   readonly hunger: number;
   readonly hudHot: boolean;
   readonly toastToken: number;
+  readonly toastText: string;
   readonly immerse: boolean;
   readonly selected: DockItemId;
   readonly archiveOpen: boolean;
@@ -52,12 +53,9 @@ export function TerminalShell(props: {
       >
         <TerminalHeader catalogNo={props.catalogNo} onToggleImmerse={props.onToggleImmerse} />
         <div className="ldc-shell__mid">
-          <div className="ldc-shell__gutter" />
           {props.children}
-          <div className="ldc-shell__gutter ldc-shell__gutter--right">
-            <StatusHud bond={props.bond} energy={props.energy} hunger={props.hunger} hot={props.hudHot} />
-          </div>
-          <BondToast token={props.toastToken} />
+          <StatusHud bond={props.bond} energy={props.energy} hunger={props.hunger} hot={props.hudHot} />
+          <BondToast token={props.toastToken} text={props.toastText} />
           <ArchivePanel open={props.archiveOpen} catalogNo={props.catalogNo} displayName={props.displayName} />
         </div>
         <ItemDock
