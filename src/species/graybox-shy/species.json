@@ -68,7 +68,7 @@
 
   "affection": {
     "bonding": {
-      "gainPerPet": 0.11,
+      "gainPerPet": 0.2,
       "decayPerSec": 0.009,
       "penaltyPerSecWhenAnnoyed": 0.09,
       "requiresTouchToNotice": true,

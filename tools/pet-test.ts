@@ -264,9 +264,16 @@ function main(): void {
     const h = createHarness(speciesId);
     h.advance(1200);
 
+    // ★ 节奏说明（Alpha 打磨后重新校准）：
+    //   抚摸语义已修正为「一次按住 = 一次抚摸」，
+    //   因此这里的 8 次 = 玩家实际的 8 次抚摸。
+    //
+    //   300ms 按住 / 500ms 间隔 ≈ 每 0.8 秒摸一下 ——
+    //   这是**偏快但仍属正常**的互动节奏（1.25 次/秒）。
+    //   狗不应该因为玩家摸得比较起劲就生气。
     for (let i = 0; i < 8; i++) {
-      h.pet(220);
-      h.advance(340);
+      h.pet(300);
+      h.advance(500);
     }
 
     const bond = h.world.bondSnapshot;
@@ -274,7 +281,7 @@ function main(): void {
     const ok = h.world.currentState !== 'Retreat' && !h.world.isSulking;
 
     console.log(
-      `  8 次正常抚摸（220ms 按住 / 340ms 间隔）后：` +
+      `  8 次正常抚摸（300ms 按住 / 500ms 间隔）后：` +
         `羁绊 ${bond.bond.toFixed(3)}，阶梯「${bond.rungState}」，烦躁 ${mood.annoyance.toFixed(2)}`,
     );
     console.log(

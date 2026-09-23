@@ -175,11 +175,26 @@ const DEFAULT_PETTING: PettingConfig = {
 };
 
 const DEFAULT_ANNOYANCE: AnnoyanceConfig = {
-  windowMs: 2600,
-  threshold: 4,
-  annoyancePerExcess: 0.3,
-  decayPerSec: 0.25,
-  leaveAt: 1.0,
+  windowMs: 3200,
+  // ★ Alpha 打磨：阈值从 4 提高到 7。
+  //
+  //   校准依据：抚摸的语义已修正为「一次按住 = 一次抚摸」，
+  //   因此窗口内的次数就是**玩家实际的抚摸次数**。
+  //   实测正常节奏（220ms 按住 / 340ms 间隔）8 次抚摸耗时约 2.7 秒，
+  //   若阈值仍为 4，第 5 次就会被判为骚扰 ——
+  //   玩家会觉得"它莫名其妙就生气了"。
+  //
+  //   7 次的含义：在 3.2 秒内摸超过 7 下（约 2.2 次/秒）才算骚扰。
+  //   这个节奏在生理上已经不是"摸"而是"戳"。
+  threshold: 7,
+  annoyancePerExcess: 0.34,
+  decayPerSec: 0.3,
+  // ★ leaveAt 必须是**可达**的值。
+  //   annoyance 经 clamp01 上限为 1.0，而性格修正还会乘一个可能 > 1 的系数。
+  //   取 1.0 会导致"烦躁永远达不到阈值、狗永远不走开" ——
+  //   这个 bug 在开发中真实出现过两次（graybox 与 graybox-shy）。
+  //   校验器现已强制要求 ≤ 0.85。
+  leaveAt: 0.78,
   sulkMs: 5200,
 };
 

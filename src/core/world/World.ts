@@ -301,28 +301,59 @@ export class World {
   }
 
   /**
-   * 指针抬起。
+   * 指针抬起 —— **抚摸的结算点**。
    *
-   * ★ 抬手时的"轻点补偿"逻辑放在这里，而不是让输入层调用两次 API。
+   * ★★★ Alpha 打磨的关键决策：羁绊在抬手时结算，而非按住期间 ★★★
    *
-   *   理由：InteractionSystem 的 session 在 pointerUp 时就被销毁了，
-   *   外部若先 up 再查 hasSettled() 会永远得到 false。
-   *   把判定放在销毁之前，是唯一能正确工作的顺序。
+   * ── 为什么不在按住期间结算 ──
    *
-   *   补偿规则：
-   *     本次会话**没有**产生过结算（即轻点，未达 minEffectiveMs）
-   *       → 补一次最低有效性的抚摸，保证"点一下也有回应"
-   *     已经结算过（长按）
-   *       → 不再补偿，避免 420ms 被算成 5 次而误判为骚扰
+   * 试过两种按住期间结算的方案，都不成立：
+   *
+   *   方案 A：每 90ms 结算一次
+   *     → 一次 700ms 的按住被算成 7 次抚摸，羁绊一次涨 0.85，
+   *       两次按住就满级。玩家会发现"狂按比慢慢摸快得多"。
+   *
+   *   方案 B：一次会话只结算一次，在越过 90ms 的那一刻
+   *     → 有效性按 95ms 计算，恒为 0.278，
+   *       而玩家实际按了 420ms。10 次抚摸才到 0.30 羁绊。
+   *
+   * 根因：**按住的时长只有在抬手时才完全已知**。
+   * 在按住期间任何时刻结算，都用的是一个不完整的时长。
+   *
+   * ── 当前模型 ──
+   *
+   *   按下期间：只累加时长 + 让状态机即时响应（表现层无延迟）
+   *   抬手时：  用完整时长算一次有效性，发放一次羁绊
+   *
+   * 这不影响"即时感"：状态机在看按下的**第一帧**就会进入
+   * LookAt / Approach（见 interactionTransitions 的即时响应设计），
+   * 玩家看到的反应依然是立刻的。
+   *
+   * 规则：
+   *   按住 ≥ minEffectiveMs（90ms）→ 一次有效抚摸，有效性按时长（最高 1.0）
+   *   按住 <  minEffectiveMs        → 视为轻点，补一次低有效性抚摸（0.45）
+   *
+   * 两种情况都只发放**一次**，且都计入骚扰窗口。
    */
   pointerUp(atMs: number): void {
-    const settled = this.interaction.hasSettled();
+    if (this.isSulking) {
+      this.interaction.pointerUpAt(atMs);
+      return;
+    }
+
+    // ★ 先读时长，再销毁 session（顺序不能反）
+    const heldMs = this.interaction.pettingHeldMs;
+    const wasOnTarget = this.interaction.isPetting;
     this.interaction.pointerUpAt(atMs);
 
-    if (!settled && !this.isSulking) {
-      // 轻点补偿：本次会话未产生结算（短促的一下），
-      // 补一次最低有效性的抚摸，保证"点一下也有回应"。
-      // 这也算一次新的抚摸会话 —— 因此计入骚扰窗口。
+    if (!wasOnTarget) return; // 没摸在狗身上，不算
+
+    const minEffective = this.species.affection.petting.minEffectiveMs;
+    if (heldMs >= minEffective) {
+      // 有效抚摸：有效性随按住时长增长（360ms 达满分）
+      this.registerPet(this.interaction.effectiveness(heldMs), true);
+    } else {
+      // 轻点：给一次明显较弱但确实存在的回应
       this.registerPet(0.45, true);
     }
   }
@@ -639,20 +670,13 @@ export class World {
     const petting = this.interaction.isPetting;
     this.blackboard['beingPetted'] = petting;
 
-    // ③ 结算有效抚摸
-    if (petting) {
-      const fresh = this.interaction.settlePets();
-      if (fresh > 0) {
-        // 摸得越久，每次结算的有效性越高
-        const eff = this.interaction.effectiveness(this.interaction.pettingHeldMs);
-        // ★ 只有本次会话的**第一次**结算才算"新的一次抚摸"，
-        //   用于骚扰判定。详见 registerPet 的说明。
-        const isFirstOfSession = this.interaction.settledCount === fresh;
-        for (let i = 0; i < fresh; i++) {
-          this.registerPet(eff, isFirstOfSession && i === 0);
-        }
-      }
-    }
+    // ③ 抚摸的羁绊结算**不在这里** ——
+    //   它在 pointerUp() 里发生，因为只有抬手时才知道完整的按住时长。
+    //   这里只维护"是否正在被抚摸"这一状态，供状态机即时响应。
+    //
+    //   （早期版本在这里按帧结算，导致两个问题：
+    //     按住时长被切成多次抚摸而虚增羁绊；
+    //     或有效性在刚越过阈值时被截断。详见 pointerUp 的说明。）
 
     // ④ 闹别扭倒计时
     if (this.sulkRemainingMs > 0) {

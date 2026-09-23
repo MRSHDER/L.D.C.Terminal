@@ -50,17 +50,36 @@ export const DEFAULT_INTERACTION_CONFIG: InteractionConfig = {
   touchBonusPx: 16,
 };
 
-/** 一次抚摸会话（按下 → 持续 → 抬起）的统计 */
+/**
+ * 一次抚摸会话（按下 → 持续 → 抬起）的统计 */
 export interface PettingSession {
   readonly startedAtMs: number;
   /** 累计有效抚摸时长 */
   accumulatedMs: number;
-  /** 已经结算过的抚摸次数（每次达到一个"有效抚摸"单位就 +1） */
+  /** 已经结算过的抚摸次数（0 或 1） */
   settledPets: number;
   /** 上次结算时的累计时长，用于判断是否又攒够一次 */
   lastSettleAtMs: number;
   /** 是否摸在狗身上（没摸到就不算） */
   onTarget: boolean;
+  /**
+   * 结算时记录的按住时长（ms）。
+   *
+   * ★ 为什么必须在这里定格一个快照（Alpha 打磨修正）：
+   *
+   *   `effectiveness` 依赖"按了多久"，而结算发生在累计时长
+   *   刚越过 minEffectiveMs（90ms）的**那一刻** ——
+   *   此时按住时长只有 ~95ms，算出有效性 0.26。
+   *   玩家实际按了 420ms，但有效性在结算瞬间就被定死了。
+   *
+   *   实测症状：每次抚摸的 effective 恒为 0.278，
+   *   羁绊涨得极慢，10 次抚摸才到 0.30（阶梯第一级）。
+   *
+   *   修正：结算时只记录"这一次抚摸开始了"，
+   *   真正的有效性在**抬手时**根据总时长计算并补足差额。
+   *   这样"按得越久越认真"才真正生效。
+   */
+  settledHeldMs: number;
 }
 
 export interface PettingEvent {
@@ -155,6 +174,7 @@ export class InteractionSystem {
       settledPets: 0,
       lastSettleAtMs: atMs,
       onTarget: true,
+      settledHeldMs: 0,
     };
     return true;
   }
@@ -184,6 +204,11 @@ export class InteractionSystem {
     void atMs;
     const s = this.session;
     this.session = null;
+    if (s) {
+      // ★ 抬手时定格最终按住时长 —— 让 effectiveness 反映**完整**的一次抚摸，
+      //   而不是"结算那一刻"的时长。详见 PettingSession.settledHeldMs 的说明。
+      s.settledHeldMs = s.accumulatedMs;
+    }
     return s;
   }
 
@@ -198,58 +223,87 @@ export class InteractionSystem {
   /**
    * 结算「有效抚摸」。
    *
-   * ★ 这是"轻轻点一下"与"按住温柔地摸"的分界线，也是 Milestone 2 的体验核心。
+   * ★★★ Alpha 打磨修正：一次按住 = 一次抚摸，且有效性在**抬手时**计算 ★★★
    *
-   * 规则：每累计 minEffectiveMs 毫秒算一次有效抚摸。
-   *   轻点（<90ms）   → 0 次结算，但仍算"碰了一下"（由 tap 手势处理）
-   *   按住 420ms      → 约 4 次结算，羁绊显著上升
-   *   按住 2 秒       → 约 22 次结算 → 迅速走完阶梯并触发闭眼享受
+   * ── 两个连续发现的问题 ──
    *
-   * ★ 为什么反馈用"次数"而不是"一个累积量"：
-   *   抚摸是有节奏的动作。一次抚摸 = 一次心跳，
-   *   这既符合"摸一下"的直觉，也让骚扰判定（单位时间内的次数）
-   *   有明确的计量单位。若只累积一个 0..1 的量，
-   *   "摸得快"与"摸得慢"就无法区分，骚扰机制也就无法成立。
+   * 问题 1（次数虚增）：
+   *   原实现"每累计 minEffectiveMs 算一次抚摸"，
+   *   玩家按住 700ms 这一个自然动作被结算成 7 次 ——
+   *   羁绊一次涨 0.85，两次按住就满级。
+   *   玩家会无意中发现"狂按比慢慢摸快得多"，行为被引导到错误方向。
    *
-   * @returns 本次新结算的有效抚摸次数
+   * 问题 2（有效性被截断）：
+   *   改为"一次会话只结算一次"之后，结算发生在累计时长
+   *   刚越过 minEffectiveMs（90ms）的那一刻 ——
+   *   此时算出的有效性只有 0.26，而玩家实际按了 420ms。
+   *   实测每次抚摸的 effective 恒为 0.278，10 次才到 0.30 羁绊。
+   *
+   * ── 正确模型：结算推迟到抬手 ──
+   *
+   *   按下期间只累加时长，**不发放羁绊**；
+   *   抬手时用完整时长算有效性，发放一次。
+   *
+   *   这样两个问题同时解决：
+   *     一次按住 = 一次抚摸（不虚增）
+   *     有效性反映完整时长（不被截断）
+   *
+   *   副作用：抚摸的反馈延迟到抬手才结算。
+   *   但**表现层的反馈是即时的** —— 状态机在被按住的第一帧
+   *   就会进入 LookAt/Approach（见 interactionTransitions），
+   *   所以玩家感受到的响应速度不受影响。
+   *
+   * @returns 本次会话是否达到"有效抚摸"的最低时长
    */
   settlePets(): number {
     const s = this.session;
     if (!s) return 0;
+    if (s.settledPets > 0) return 0;
 
     const minEffective = this.species.affection.petting.minEffectiveMs;
-    if (minEffective <= 0) return 0;
+    // 未达最低时长 → 不算（抬手时由轻点补偿处理）
+    if (minEffective > 0 && s.accumulatedMs < minEffective) return 0;
 
-    const earned = Math.floor(s.accumulatedMs / minEffective);
-    const fresh = earned - s.settledPets;
-    if (fresh <= 0) return 0;
-
-    s.settledPets = earned;
-    return fresh;
+    s.settledPets = 1;
+    return 1;
   }
 
   /**
    * 本次抚摸会话是否已经产生过结算。
    *
-   * 用途：抬手时的"收尾奖励"只应在**没有**产生过结算时才发放。
-   *   轻点一下（未达 minEffectiveMs）→ 给一次补偿，让轻点也有回应
-   *   按住很久 → 已结算多次，不再额外发放（避免 420ms 被算成 5 次，
-   *              瞬间触发骚扰阈值 —— 这个 bug 让"温柔地摸"被判成骚扰）
+   * 用途：抬手时的"轻点补偿"只应在**没有**产生过结算时才发放 ——
+   *   轻点一下（未达 minEffectiveMs）→ 补一次，让轻点也有回应
+   *   已经结算过 → 不再重复发放
    */
   hasSettled(): boolean {
     return (this.session?.settledPets ?? 0) > 0;
   }
 
-  /** 当前会话已结算的次数 */
+  /** 当前会话已结算的次数（0 或 1） */
   get settledCount(): number {
     return this.session?.settledPets ?? 0;
   }
 
-  /** 抚摸有效性：按住越久，单次抚摸的价值越高（上限 1） */
+  /**
+   * 抚摸有效性：按住越久，这一下的分量越重（上限 1）。
+   *
+   * ★ 这是"长按更亲密"的**唯一**表达通道（修正后）。
+   *
+   *   修正前，长按通过"结算成多次抚摸"来放大效果 ——
+   *   但那是虚增次数，会让玩家发现"狂按涨得快"这种错误引导。
+   *   现在一次按住只算一次，其"认真程度"由本函数决定：
+   *
+   *     60ms（戳一下）   → 0.17  敷衍
+   *     200ms（随手摸）  → 0.56
+   *     360ms（正常摸）  → 1.00  认真
+   *     1s+（温柔长摸）  → 1.00（封顶，超出部分转化为"享受"表现）
+   *
+   *   按住 1 秒即达满分：再久也只是享受，不该无限放大羁绊。
+   */
   effectiveness(heldMs: number): number {
     const minEffective = this.species.affection.petting.minEffectiveMs;
     if (minEffective <= 0) return 1;
-    // 按住 1 秒即达到满有效性
+    // 达到 minEffectiveMs × 4（灰盒为 360ms）即满有效性
     return Math.min(1, heldMs / Math.max(1, minEffective * 4));
   }
 
