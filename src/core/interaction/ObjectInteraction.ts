@@ -11,7 +11,7 @@
 
 import type { IntentKind } from '../event/events';
 
-export type InteractionObjectKind = 'food' | 'toy' | 'container';
+export type InteractionObjectKind = 'food' | 'drink' | 'toy' | 'container';
 export type DropTargetKind = 'mouth' | 'ground' | 'bowl' | 'room';
 
 export interface InteractionObjectDefinition {
@@ -55,25 +55,33 @@ export const DEFAULT_INTERACTION_OBJECTS: readonly InteractionObjectDefinition[]
     id: 'meat',
     kind: 'food',
     label: 'MEAT',
-    color: 0xe88a8a,
-    home: { x: 42, y: 174 },
-    size: { w: 14, h: 10 },
+    color: 0xc43a32,
+    home: { x: 36, y: 172 },
+    size: { w: 18, h: 12 },
+  },
+  {
+    id: 'water',
+    kind: 'drink',
+    label: 'WATER',
+    color: 0x3e8ad0,
+    home: { x: 62, y: 172 },
+    size: { w: 20, h: 12 },
   },
   {
     id: 'ball',
     kind: 'toy',
     label: 'BALL',
-    color: 0x7fd8a0,
-    home: { x: 76, y: 174 },
-    size: { w: 12, h: 12 },
+    color: 0x7fd85a,
+    home: { x: 90, y: 172 },
+    size: { w: 14, h: 14 },
   },
   {
     id: 'bowl',
     kind: 'container',
     label: 'BOWL',
-    color: 0x6ec6f0,
-    home: { x: 274, y: 174 },
-    size: { w: 22, h: 10 },
+    color: 0xd8c8a8,
+    home: { x: 274, y: 172 },
+    size: { w: 22, h: 12 },
   },
 ];
 
@@ -138,7 +146,7 @@ export function intentForDrop(
 }
 
 function mapIntent(kind: InteractionObjectKind, target: DropTargetKind): IntentKind {
-  if (kind === 'food') {
+  if (kind === 'food' || kind === 'drink') {
     if (target === 'mouth') return 'FEED_HAND';
     if (target === 'bowl') return 'FEED_BOWL';
     return 'FEED_GROUND';
