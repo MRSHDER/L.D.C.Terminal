@@ -47,7 +47,7 @@ function textureFromPixelMap(): Texture {
   const image = ctx.createImageData(w, h);
   const pix = DOG_SPRITE_PIXELS;
   for (let i = 0; i < pix.length; i++) {
-    const pal = DOG_SPRITE_PALETTE[parseInt(pix[i], 16)] ?? [0, 0, 0, 0];
+    const pal = DOG_SPRITE_PALETTE[parseInt(pix[i] ?? '0', 16)] ?? [0, 0, 0, 0];
     const o = i * 4;
     image.data[o] = pal[0];
     image.data[o + 1] = pal[1];
@@ -161,12 +161,12 @@ export class GrayboxRenderer {
     const scaleBase = 1.35;
     const poseScaleY = Math.max(0.58, rs.pose.bodyHeightRatio || 1);
     const proceduralScaleY = p.scaleY || 1;
-    const animScaleY = moving ? WALK_SCALE_Y[walkFrame] : IDLE_SCALE_Y[idleFrame];
+    const animScaleY = moving ? WALK_SCALE_Y[walkFrame] ?? 1 : IDLE_SCALE_Y[idleFrame] ?? 1;
     const scaleX = dir * scaleBase * Math.abs(p.scaleX || 1);
     const scaleY = scaleBase * poseScaleY * proceduralScaleY * animScaleY;
 
-    const offsetX = moving ? WALK_OFFSETS_X[walkFrame] * dir : 0;
-    const offsetY = moving ? WALK_OFFSETS_Y[walkFrame] : IDLE_OFFSETS_Y[idleFrame];
+    const offsetX = moving ? (WALK_OFFSETS_X[walkFrame] ?? 0) * dir : 0;
+    const offsetY = moving ? WALK_OFFSETS_Y[walkFrame] ?? 0 : IDLE_OFFSETS_Y[idleFrame] ?? 0;
     const baseX = Math.round(rs.x + p.offsetX + offsetX);
     const baseY = Math.round(rs.y + p.offsetY + offsetY + rs.pose.groundOffsetPx);
 
