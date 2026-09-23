@@ -3,10 +3,6 @@
  *
  * 本文件只做一件事：把「玩家把什么东西放到哪里」翻译成 intent。
  * 它不决定狗怎么回应，也不包含任何犬种分支。
- *
- * 设计原则：
- *   object data → drop target → intent
- *   后续狗的反应仍由 personality / mood / needs / bond / memory 决定。
  */
 
 import type { IntentKind } from '../event/events';
@@ -45,43 +41,38 @@ export interface DropIntentResult {
   readonly at: { readonly x: number; readonly y: number };
 }
 
-/**
- * M3 第一批物体。这里是通用交互物，不是犬种专属数据。
- * 后续如果要让不同狗拥有不同玩具/食物偏好，应把偏好放进 species.preferences，
- * 而不是在这里写 if dog == ...。
- */
 export const DEFAULT_INTERACTION_OBJECTS: readonly InteractionObjectDefinition[] = [
   {
     id: 'meat',
     kind: 'food',
     label: 'MEAT',
-    color: 0xc43a32,
-    home: { x: 36, y: 172 },
-    size: { w: 18, h: 12 },
+    color: 0xb43028,
+    home: { x: 38, y: 170 },
+    size: { w: 24, h: 16 },
   },
   {
     id: 'water',
     kind: 'drink',
     label: 'WATER',
-    color: 0x3e8ad0,
-    home: { x: 62, y: 172 },
-    size: { w: 20, h: 12 },
+    color: 0x2f7fc4,
+    home: { x: 70, y: 170 },
+    size: { w: 24, h: 16 },
   },
   {
     id: 'ball',
     kind: 'toy',
     label: 'BALL',
-    color: 0x7fd85a,
-    home: { x: 90, y: 172 },
-    size: { w: 14, h: 14 },
+    color: 0x6fd24a,
+    home: { x: 102, y: 170 },
+    size: { w: 18, h: 18 },
   },
   {
     id: 'bowl',
     kind: 'container',
     label: 'BOWL',
-    color: 0xd8c8a8,
-    home: { x: 274, y: 172 },
-    size: { w: 22, h: 12 },
+    color: 0xe2d3b0,
+    home: { x: 272, y: 170 },
+    size: { w: 28, h: 16 },
   },
 ];
 
