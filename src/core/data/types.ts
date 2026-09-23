@@ -45,12 +45,40 @@ export interface SilhouetteConfig {
   readonly tailAttach: number;
 }
 
+/**
+ * 程序化毛色。渲染器只认识色板 + 开关，不认识「伯恩山」。
+ * 三色犬把 markings 打开即可，单色灰盒保持全 false。
+ */
+export interface CoatMarkings {
+  readonly blaze: boolean;
+  readonly muzzle: boolean;
+  readonly bib: boolean;
+  readonly socks: boolean;
+  readonly rustPoints: boolean;
+  readonly tailTip: boolean;
+}
+
+export interface CoatConfig {
+  readonly base: number;
+  readonly shade: number;
+  readonly highlight: number;
+  readonly outline: number;
+  readonly rust: number;
+  readonly rustShade: number;
+  readonly white: number;
+  readonly whiteShade: number;
+  readonly nose: number;
+  readonly eye: number;
+  readonly markings: CoatMarkings;
+}
+
 export interface PhysicalConfig {
   readonly bodyScale: number;
   readonly hitbox: { readonly w: number; readonly h: number; readonly anchorY: number };
   readonly pettingHotspots: readonly PettingHotspot[];
   readonly grayboxTint: number;
   readonly silhouette: SilhouetteConfig;
+  readonly coat: CoatConfig;
 }
 
 export interface Temperament {
