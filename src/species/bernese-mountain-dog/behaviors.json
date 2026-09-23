@@ -1,0 +1,31 @@
+{
+  "$schema": "ldc/behaviors/v1",
+  "id": "bernese-mountain-dog",
+
+  "stateWeights": {
+    "Idle": 40,
+    "Walk": 25,
+    "Sit": 18,
+    "Sleep": 10
+  },
+
+  "personalityBias": {
+    "Walk": { "energy": { "sensitivity": 1.5 } },
+    "Sit": { "energy": { "sensitivity": -0.6 } },
+    "Sleep": { "energy": { "sensitivity": -1.2 } },
+    "Idle": { "curiosity": { "sensitivity": 0.3 } }
+  },
+
+  "interactionResponse": {},
+
+  "microBehaviors": [
+    { "id": "earTwitch", "chancePerMin": 5 },
+    { "id": "blink", "chancePerMin": 16 },
+    { "id": "headShake", "chancePerMin": 1.5 },
+    { "id": "yawn", "chancePerMin": 2.5, "when": "mood.arousal < 0.35" },
+    { "id": "stretch", "chancePerMin": 1.2, "when": "justWokeUp" },
+    { "id": "sigh", "chancePerMin": 2 }
+  ],
+
+  "extraRandomness": 0
+}
