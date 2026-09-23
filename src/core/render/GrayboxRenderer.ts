@@ -1,6 +1,6 @@
 /**
  * L.D.C. — 渲染器（PixiJS）
- * 狗使用独立精灵帧素材。Pixi 8 不能把 data URL 当 Asset id，必须先解码成 Image。
+ * 走路用生成 PNG 帧；坐/睡/摇尾/享受/吃用色板姿势帧。
  */
 
 import {
@@ -16,6 +16,8 @@ import type { RenderState } from '../animation/AnimationSystem';
 import type { SpeciesData } from '../data/types';
 import { PALETTE } from './palette';
 import { DOG_FRAME_H, DOG_FRAME_IMAGES, DOG_FRAME_W } from './spriteDogGenerated';
+import { POSE_CLIPS, POSE_H, POSE_W } from './spriteDogPoses';
+import { textureFromIndexed } from './indexedTexture';
 
 export interface GrayboxRendererOptions {
   readonly designWidth: number;
@@ -25,7 +27,7 @@ export interface GrayboxRendererOptions {
 }
 
 const WALK_CLIPS = new Set(['Walk', 'Approach', 'Retreat']);
-const SIT_CLIPS = new Set(['Sit', 'PetEnjoy']);
+const POSE_SCALE = DOG_FRAME_W / POSE_W;
 
 function textureFromDataUrl(src: string): Promise<Texture> {
   return new Promise((resolve, reject) => {
@@ -44,20 +46,6 @@ function textureFromDataUrl(src: string): Promise<Texture> {
   });
 }
 
-function pickDogTexture(rs: RenderState, textures: Texture[]): Texture {
-  const idle = textures[0]!;
-  const count = textures.length;
-  if (count <= 1) return idle;
-
-  if (WALK_CLIPS.has(rs.clipId) || rs.moving) {
-    return textures[rs.frameIndex % count] ?? idle;
-  }
-  if (SIT_CLIPS.has(rs.clipId) || rs.pose.sleeping) {
-    return textures[0] ?? idle;
-  }
-  return idle;
-}
-
 export class GrayboxRenderer {
   readonly app: Application;
   private readonly options: GrayboxRendererOptions;
@@ -66,10 +54,12 @@ export class GrayboxRenderer {
   private readonly grid: Graphics;
   private readonly shadowLayer: Graphics;
   private dogTextures: Texture[] = [];
+  private poseTextures: Record<string, Texture[]> = {};
   private dog: Sprite | null = null;
   private species: SpeciesData | null = null;
   private initialized = false;
   private hostElement: HTMLElement | null = null;
+  private usingPose = false;
 
   constructor(options: GrayboxRendererOptions) {
     this.options = options;
@@ -100,6 +90,10 @@ export class GrayboxRenderer {
     this.app.ticker.stop();
 
     this.dogTextures = await Promise.all(DOG_FRAME_IMAGES.map(textureFromDataUrl));
+    this.poseTextures = {};
+    for (const [clip, frames] of Object.entries(POSE_CLIPS)) {
+      this.poseTextures[clip] = frames.map((pixels) => textureFromIndexed(pixels, POSE_W, POSE_H));
+    }
     const first = this.dogTextures[0];
     if (!first) throw new Error('dog frames missing');
     const dog = new Sprite(first);
@@ -144,6 +138,20 @@ export class GrayboxRenderer {
     for (let y = 0; y <= h; y += step) this.grid.rect(0, y, w, 1).fill({ color: PALETTE.grid });
   }
 
+  private pickTexture(rs: RenderState): Texture {
+    const poses = this.poseTextures[rs.clipId];
+    if (poses && poses.length > 0) {
+      this.usingPose = true;
+      return poses[rs.frameIndex % poses.length] ?? poses[0]!;
+    }
+    this.usingPose = false;
+    const idle = this.dogTextures[0]!;
+    if (WALK_CLIPS.has(rs.clipId) || rs.moving) {
+      return this.dogTextures[rs.frameIndex % this.dogTextures.length] ?? idle;
+    }
+    return idle;
+  }
+
   render(rs: RenderState): void {
     if (!this.initialized || !this.dog) return;
 
@@ -151,10 +159,10 @@ export class GrayboxRenderer {
     const facingRight = rs.facingDeg >= -90 && rs.facingDeg <= 90;
     const dir = facingRight ? 1 : -1;
     const moving = rs.moving || rs.speedRatio > 0.05;
-    const dogTexture = pickDogTexture(rs, this.dogTextures);
+    const dogTexture = this.pickTexture(rs);
     if (dogTexture && this.dog.texture !== dogTexture) this.dog.texture = dogTexture;
 
-    const scale = 1;
+    const scale = this.usingPose ? POSE_SCALE : 1;
     const baseX = Math.round(rs.x + p.offsetX);
     const baseY = Math.round(rs.y + p.offsetY);
 
