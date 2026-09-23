@@ -1,0 +1,27 @@
+{
+  "$schema": "ldc/behaviors/v1",
+  "id": "graybox-swift",
+
+  "stateWeights": {
+    "Idle": 18,
+    "Walk": 58,
+    "Sit": 6,
+    "Sleep": 4
+  },
+
+  "personalityBias": {
+    "Walk": { "energy": { "sensitivity": 1.7 } },
+    "Sit": { "energy": { "sensitivity": -1.1 } },
+    "Sleep": { "energy": { "sensitivity": -1.5 } },
+    "Idle": { "curiosity": { "sensitivity": 0.6 } }
+  },
+
+  "interactionResponse": {},
+
+  "microBehaviors": [
+    { "id": "earTwitch", "chancePerMin": 12 },
+    { "id": "headTilt", "chancePerMin": 5 }
+  ],
+
+  "extraRandomness": 0.15
+}

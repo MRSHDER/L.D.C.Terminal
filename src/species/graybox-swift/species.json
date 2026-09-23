@@ -1,0 +1,68 @@
+{
+  "$schema": "ldc/species/v1",
+  "version": "1.0.0",
+  "id": "graybox-swift",
+  "displayName": {
+    "zh": "灰盒·敏捷型",
+    "en": "Graybox Swift"
+  },
+  "catalogNo": "LDC-002",
+  "description": {
+    "zh": "唯一目的是证明「新增犬种不用改代码」：本文件不含任何逻辑，只有数值。行动快、思考快、动画帧率高。",
+    "en": "Exists solely to prove that adding a species requires no code changes. This file contains no logic, only numbers: fast movement, fast thinking, high animation framerate."
+  },
+
+  "physical": {
+    "bodyScale": 0.78,
+    "hitbox": { "w": 38, "h": 28, "anchorY": 0.9 },
+    "grayboxTint": 16777215
+  },
+
+  "personality": {
+    "temperament": {
+      "gentleness": 0.35,
+      "energy": 0.95,
+      "curiosity": 0.9,
+      "stubbornness": 0.15,
+      "shyness": 0.1,
+      "clinginess": 0.6,
+      "playfulness": 0.9,
+      "obedience": 0.85,
+      "randomness": 0.3
+    },
+    "traits": ["swift", "alert", "restless"]
+  },
+
+  "cognition": {
+    "decisionIntervalMs": 180,
+    "reactionDelayMs": [60, 180],
+    "attentionSpanMs": 4000,
+    "memorySpanMs": 20000,
+    "learningRate": 0.4
+  },
+
+  "animation": {
+    "targetFps": 12,
+    "breath": { "freqHz": 0.42, "ampPx": 1.6, "bodyScaleY": 0.022 },
+    "blink": { "baseIntervalMs": 2600, "varianceMs": 1400, "durationMs": 110 },
+    "tail": { "segments": 4, "baseAngleDeg": 14, "maxSwingDeg": 34, "delayPerSegMs": 55 },
+    "ear": { "jitterDeg": 7, "triggerBias": 0.45 },
+    "float": { "ampPx": 1.1, "freqHz": 0.24 },
+    "transitions": {},
+    "defaultTransitionMs": 110
+  },
+
+  "locomotion": {
+    "walkSpeedPx": 62,
+    "runSpeedPx": 118,
+    "turnRateDeg": 420,
+    "idleWanderRadiusPx": 110,
+    "wanderChancePerMin": 14,
+    "arriveThresholdPx": 2
+  },
+
+  "resources": {
+    "assetRoot": "",
+    "animationClips": {}
+  }
+}

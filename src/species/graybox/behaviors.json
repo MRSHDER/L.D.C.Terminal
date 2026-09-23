@@ -1,0 +1,27 @@
+{
+  "$schema": "ldc/behaviors/v1",
+  "id": "graybox",
+
+  "stateWeights": {
+    "Idle": 40,
+    "Walk": 25,
+    "Sit": 18,
+    "Sleep": 10
+  },
+
+  "personalityBias": {
+    "Walk": { "energy": { "sensitivity": 1.5 } },
+    "Sit": { "energy": { "sensitivity": -0.6 } },
+    "Sleep": { "energy": { "sensitivity": -1.2 } },
+    "Idle": { "curiosity": { "sensitivity": 0.3 } }
+  },
+
+  "interactionResponse": {},
+
+  "microBehaviors": [
+    { "id": "earTwitch", "chancePerMin": 4 },
+    { "id": "blink", "chancePerMin": 14 }
+  ],
+
+  "extraRandomness": 0
+}

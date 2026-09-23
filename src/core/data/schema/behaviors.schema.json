@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ldc/behaviors/v1",
+  "title": "L.D.C. Behaviors Data",
+  "description": "行为权重表。新增犬种时通常只需覆盖部分权重，未写字段继承 DEFAULT_BEHAVIORS。",
+  "type": "object",
+  "required": ["$schema", "id", "stateWeights"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "const": "ldc/behaviors/v1" },
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+
+    "stateWeights": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "type": "number", "minimum": 0 }
+    },
+
+    "personalityBias": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "required": ["sensitivity"],
+          "additionalProperties": false,
+          "properties": {
+            "sensitivity": { "type": "number", "minimum": -4, "maximum": 4 }
+          }
+        }
+      }
+    },
+
+    "interactionResponse": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["weights"],
+        "additionalProperties": false,
+        "properties": {
+          "weights": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": { "type": "number", "minimum": 0 }
+          },
+          "conditions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["when"],
+              "additionalProperties": false,
+              "properties": {
+                "when": { "type": "string", "minLength": 1 },
+                "weights": {
+                  "type": "object",
+                  "additionalProperties": { "type": "number", "minimum": 0 }
+                },
+                "randomness": { "type": "number", "minimum": 0, "maximum": 1 }
+              }
+            }
+          },
+          "cooldownMs": { "type": "number", "minimum": 0 },
+          "requiresAttention": { "type": "boolean" }
+        }
+      }
+    },
+
+    "microBehaviors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "chancePerMin"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "chancePerMin": { "type": "number", "minimum": 0 },
+          "when": { "type": "string" }
+        }
+      }
+    },
+
+    "extraRandomness": { "type": "number", "minimum": 0, "maximum": 1, "default": 0 }
+  }
+}

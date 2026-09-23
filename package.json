@@ -1,0 +1,37 @@
+{
+  "name": "ldc-terminal",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "L.D.C. — LOW-DEFINITION CANINE DATABASE. A living digital archive of dogs, rendered in low-resolution pixel art.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit false --emitDeclarationOnly false --pretty",
+    "species:validate": "tsx tools/validate-species.ts",
+    "species:new": "tsx tools/new-species.ts",
+    "sim": "tsx tools/simulate.ts",
+    "tune": "tsx tools/tune-transitions.ts",
+    "verify": "npm run species:validate && npm run build"
+  },
+  "dependencies": {
+    "pixi.js": "^8.6.6",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "ajv": "^8.17.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7"
+  }
+}
