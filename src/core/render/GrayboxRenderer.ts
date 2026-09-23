@@ -445,6 +445,7 @@ export class GrayboxRenderer {
     // 像素对齐：所有坐标取整
     const baseX = Math.round(rs.x + p.offsetX);
     const baseY = Math.round(rs.y + p.offsetY);
+    const facingRight = rs.facingDeg >= -90 && rs.facingDeg <= 90;
 
     // ── 阴影：不随呼吸移动，但随身高比例变化 ──
     const shadowW = Math.round(geo.bodyW * (0.9 + rs.speedRatio * 0.1));
@@ -536,10 +537,12 @@ export class GrayboxRenderer {
     }
 
     // ── 尾巴：逐段旋转，每段挂在前一段末端 ──
-    // 段 0 从躯干后上方长出。
-    // 与头部同理，纵向位置必须跟随 poseScale —— 否则坐下/睡觉时
-    // 尾巴会悬在压缩后的身体上方，看起来"断开"。
-    let tailX = baseX - Math.round(geo.bodyW * 0.42);
+    //
+    // ★ 尾巴必须装在「头的反方向」。
+    //   旧实现固定把尾巴接在身体左侧，且尾巴段永远向 +x 生长。
+    //   当狗面向左时，头也在左侧，于是尾巴看起来装反了，还会插进身体。
+    //   现在按朝向选择后侧，并把尾巴角度镜像到身体外侧。
+    let tailX = baseX + (facingRight ? -1 : 1) * Math.round(geo.bodyW * 0.42);
     let tailY = baseY - Math.round(geo.bodyH * 0.78 * poseScale);
     let tailAngle = p.tailAnglesDeg[0] ?? 0;
 
@@ -547,15 +550,14 @@ export class GrayboxRenderer {
       const seg = this.tailSegments[i];
       if (!seg) continue;
 
-      // 每段的角度累加（相对角度 → 绝对角度）
       const segAngleDeg = p.tailAnglesDeg[i] ?? tailAngle;
       tailAngle = segAngleDeg;
+      const visualAngle = facingRight ? 180 - segAngleDeg : segAngleDeg;
 
       seg.position.set(tailX, tailY);
-      seg.rotation = (tailAngle * Math.PI) / 180;
+      seg.rotation = (visualAngle * Math.PI) / 180;
 
-      // 计算下一段的起点（本段末端），同时把角度累加
-      const rad = (tailAngle * Math.PI) / 180;
+      const rad = (visualAngle * Math.PI) / 180;
       tailX += Math.round(Math.cos(rad) * geo.segLen);
       tailY += Math.round(Math.sin(rad) * geo.segLen);
     }
@@ -571,7 +573,7 @@ export class GrayboxRenderer {
     //   头部锚点定在躯干顶部略下方，形成自然的颈部衔接。
     const bodyTopY = baseY - geo.bodyH * poseScale;
     const headY = Math.round(bodyTopY + geo.headH * 0.55) + Math.round(rs.pose.headDropPx * poseScale);
-    const headX = baseX + (rs.facingDeg >= -90 && rs.facingDeg <= 90 ? 1 : -1) * Math.round(geo.bodyW * 0.18);
+    const headX = baseX + (facingRight ? 1 : -1) * Math.round(geo.bodyW * 0.18);
     this.headLayer.position.set(headX, headY);
     this.headLayer.rotation = ((p.rotationDeg * Math.PI) / 180) * 0.5;
 
@@ -586,13 +588,12 @@ export class GrayboxRenderer {
     this.earLayerR.rotation = 0.22 - jitterRad;
 
     // ── 眼睛：眨眼 ──
-    // 眼睛位置跟随头部，但独立绘制以表现闭合
-    this.redrawEyes(headX, headY, rs, geo.headW, geo.headH);
+    // eyesGfx 是 headLayer 的子节点，因此必须使用头部局部坐标。
+    // 旧实现把 world-space 的 headX/headY 写进子节点，导致眼睛被二次偏移。
+    this.redrawEyes(rs, geo.headW, geo.headH);
   }
 
   private redrawEyes(
-    headX: number,
-    headY: number,
     rs: RenderState,
     headW: number,
     headH: number,
@@ -601,7 +602,7 @@ export class GrayboxRenderer {
     g.clear();
 
     const eyeSpacing = Math.max(3, Math.round(headW * 0.26));
-    const eyeY = headY - Math.round(headH * 0.52);
+    const eyeY = -Math.round(headH * 0.52);
     const eyeW = Math.max(2, Math.round(headW * 0.16));
     const eyeH = Math.max(2, Math.round(headH * 0.22));
 
@@ -625,8 +626,8 @@ export class GrayboxRenderer {
     //   吸附到 0.9 以上即视为完全闭合，让表达干净利落。
     const closure = rawClosure >= 0.9 ? 1 : rawClosure;
 
-    const leftX = headX - eyeSpacing;
-    const rightX = headX + eyeSpacing;
+    const leftX = -eyeSpacing;
+    const rightX = eyeSpacing;
 
     for (const x of [leftX, rightX]) {
       if (closure >= 0.85) {
@@ -724,3 +725,4 @@ export class GrayboxRenderer {
     return this.app.ticker;
   }
 }
+
