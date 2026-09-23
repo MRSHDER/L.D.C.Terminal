@@ -53,6 +53,14 @@ export class GrayboxRenderer {
   private readonly shadowLayer: Graphics;
   private readonly bodyLayer: Container;
   private readonly bodyGfx: Graphics;
+  /**
+   * 腿部图层（Alpha 打磨新增）。
+   *
+   * 位于 bodyLayer **之前**加入显示列表，因此在视觉上位于身体下方 ——
+   * 腿从身体底部伸出，被身体覆盖一小段，形成自然的连接。
+   */
+  private readonly legLayer: Container;
+  private readonly legGfx: Graphics;
   private readonly tailLayer: Container;
   private readonly tailSegments: Graphics[] = [];
   private readonly earLayerL: Container;
@@ -85,6 +93,11 @@ export class GrayboxRenderer {
     this.grid = new Graphics();
 
     this.shadowLayer = new Graphics();
+
+    // 腿先入列表 → 绘制在身体之下
+    this.legLayer = new Container();
+    this.legGfx = new Graphics();
+    this.legLayer.addChild(this.legGfx);
 
     this.bodyLayer = new Container();
     this.bodyGfx = new Graphics();
@@ -146,6 +159,8 @@ export class GrayboxRenderer {
 
   private assembleScene(): void {
     this.stage.addChild(this.background, this.grid, this.shadowLayer);
+    // 腿在身体之前加入 → 视觉上位于身体下方
+    this.stage.addChild(this.legLayer);
     this.stage.addChild(this.bodyLayer);
     this.stage.addChild(this.tailLayer);
     this.stage.addChild(this.earLayerL, this.earLayerR);
@@ -312,11 +327,50 @@ export class GrayboxRenderer {
       g.rect(0, -segThick / 2, segLen, 1).fill({ color: PALETTE.bodyHighlight });
     }
 
+    // ── 腿（Alpha 打磨新增）──
+    //
+    // ★ 为什么必须加腿：
+    //   在此之前狗"走路"只是整体平移 —— 画面上是一个方块在滑动，
+    //   没有任何步态。这是最损害"它是一只狗"的观感缺陷：
+    //   移动本身不产生生命感，**移动的方式**才产生。
+    //
+    //   腿是画在最底层的独立部件，宽度与间距由身体尺寸推导，
+    //   骨骼摆动由 render() 依据 legPhase 逐帧计算。
+    //   因此它们不是"素材"，而是过程动画的一部分 —— 零素材开销。
+    const legW = Math.max(3, Math.round(bodyW * 0.14));
+    const legH = Math.max(4, Math.round(bodyH * 0.34));
+    const legGap = Math.round(bodyW * 0.26);
+
+    this.legGfx.clear();
+    // 前腿（右）与后腿（左）各两条，绘制在身体下方
+    // 具体位置由 render() 每帧设置，这里只准备图元
+    for (let i = 0; i < 4; i++) {
+      const isFar = i >= 2; // 后两条为"远端腿"，用暗色表现纵深
+      this.legGfx
+        .rect(0, 0, legW, legH)
+        .fill({ color: isFar ? PALETTE.bodyShade : PALETTE.bodyFill });
+      this.legGfx
+        .rect(0, 0, legW, 1)
+        .fill({ color: PALETTE.bodyHighlight });
+    }
+
     // 眼睛（每帧重画，因为要表现眨眼）
     this.eyesGfx.clear();
 
     // 保存几何供 render() 使用
-    this.geometry = { bodyW, bodyH, headW, headH, earW, earH, segLen, segThick };
+    this.geometry = {
+      bodyW,
+      bodyH,
+      headW,
+      headH,
+      earW,
+      earH,
+      segLen,
+      segThick,
+      legW,
+      legH,
+      legGap,
+    };
   }
 
   private geometry = {
@@ -328,6 +382,9 @@ export class GrayboxRenderer {
     earH: 12,
     segLen: 10,
     segThick: 6,
+    legW: 6,
+    legH: 12,
+    legGap: 12,
   };
 
   /**
@@ -402,6 +459,81 @@ export class GrayboxRenderer {
     this.bodyLayer.position.set(baseX, baseY);
     this.bodyLayer.scale.set(p.scaleX, poseScale);
     this.bodyLayer.rotation = 0;
+
+    // ── 腿：步态摆动（Alpha 打磨新增）──
+    //
+    // ★ 这是让"移动"读起来像"走路"的关键。
+    //
+    //   此前狗走路时身体整体平移，四条腿不存在 ——
+    //   画面上就是一个方块滑过去，完全没有步态。
+    //
+    //   步态设计（对角步，四足动物的标准行走方式）：
+    //     左前腿 与 右后腿 同相（legPhase）
+    //     右前腿 与 左后腿 反相（legPhase + π）
+    //   这个相位关系是四足动物的通用特征，
+    //   因此不需要为每个犬种单独设计 —— 差异体现在步频上，
+    //   而步频已由 speedPxPerSec 与 animation.targetFps 决定。
+    //
+    //   每条腿做两件事：
+    //     ① 前后摆动（水平位移，sin）
+    //     ② 抬起落下（垂直位移，|cos| —— 落地时贴地，抬腿时抬起）
+    //   两者叠加才像"迈步"，只做水平摆动会像"蹭地"。
+    //
+    //   静止时 legPhase 归零，四腿并拢垂直站立。
+    const legW = geo.legW;
+    const legH = geo.legH;
+    const legGap = geo.legGap;
+    const phase = rs.pose.legPhase;
+
+    // ★ 腿的基线：身体底边**再往下** legH 像素，让腿完全露在体外。
+    //
+    //   早期版本把腿画在 bodyBottom 之上（腿顶被身体压住），
+    //   结果 4px 高的腿几乎完全被 36px 高的躯干遮住 ——
+    //   实测截图上几乎看不到腿，步态形同虚设。
+    //
+    //   现在让腿从身体底边向下延伸，全身总高 = 躯干 + 腿，
+    //   与"狗有四条腿"的直觉一致。地面锚点仍为 baseY。
+    const bodyBottom = baseY - Math.round(geo.bodyH * poseScale * 0.02);
+    const legTop = bodyBottom - Math.round(legH * 0.35);
+
+    // 腿的横向位置：前腿在后腿之前（面向右时，前方 = +x）
+    const frontX = Math.round(geo.bodyW * 0.26);
+    const backX = -Math.round(geo.bodyW * 0.30);
+    const halfGap = Math.round(legGap / 2);
+
+    // 绘制顺序：远端腿先画（更暗，被近端腿遮挡）
+    const legDefs = [
+      { x: frontX + halfGap * 0.5, phaseOffset: Math.PI, isFar: true }, // 前远
+      { x: backX + halfGap * 0.5, phaseOffset: 0, isFar: true }, // 后远
+      { x: frontX - halfGap * 0.5, phaseOffset: 0, isFar: false }, // 前近
+      { x: backX - halfGap * 0.5, phaseOffset: Math.PI, isFar: false }, // 后近
+    ];
+
+    this.legGfx.clear();
+
+    for (const leg of legDefs) {
+      // 摆动幅度随速度增长：站着不动时腿垂直，走得快时迈得大
+      const swingAmp = Math.round(geo.bodyW * 0.12 * Math.min(1, rs.speedRatio * 3 + 0.15));
+      const lp = phase + leg.phaseOffset;
+
+      // ① 水平摆动
+      const swingX = Math.round(Math.sin(lp * Math.PI * 2) * swingAmp);
+      // ② 抬腿：|cos| 峰值时抬起。像素风里 2~3px 已足够读出"迈步"
+      const lift = Math.round(Math.abs(Math.cos(lp * Math.PI * 2)) * Math.max(2, legH * 0.3));
+
+      const lx = baseX + leg.x + swingX;
+      // 抬起时腿整体上移，且可见长度缩短（脚离地）
+      const ly = legTop + lift;
+      const visibleH = Math.max(2, legH - Math.round(lift * 0.6));
+
+      // 近端腿用亮色、远端腿用暗色 —— 制造前后纵深感
+      const fill = leg.isFar ? PALETTE.bodyShade : PALETTE.bodyFill;
+
+      // 脚掌加宽 1px，让腿型有"落地"感
+      this.legGfx.rect(lx - 1, ly + visibleH - 1, legW + 2, 1).fill({ color: PALETTE.bodyOutline });
+      this.legGfx.rect(lx, ly, legW, visibleH).fill({ color: fill });
+      this.legGfx.rect(lx, ly, legW, 1).fill({ color: PALETTE.bodyHighlight });
+    }
 
     // ── 尾巴：逐段旋转，每段挂在前一段末端 ──
     // 段 0 从躯干后上方长出。
