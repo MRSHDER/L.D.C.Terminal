@@ -1,15 +1,16 @@
 /**
- * L.D.C. — Stage（Milestone 3：Interaction Foundation）
- *
- * 默认体验仍然是：一个房间，一只狗。
- * Milestone 3 的第一步只加入可拖动物体，让玩家开始表达意图。
+ * L.D.C. — Stage
+ * 默认画面就是终端本身：顶栏 + 房间 + 底栏。
+ * ?debug=1 仍打开开发侧栏。
  */
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useEngine } from './hooks/useEngine';
 import { TuningPanel } from './ui/TuningPanel';
 import { SnapshotPanel } from './ui/SnapshotPanel';
 import { DiagnosticsPanel } from './ui/DiagnosticsPanel';
+import { TerminalShell } from './ui/TerminalShell';
+import { type DockItemId } from './ui/ItemDock';
 import { ObjectGlyph } from './ObjectGlyph';
 import {
   createInteractionObjects,
@@ -47,16 +48,30 @@ export function Stage(): React.JSX.Element {
   const { snapshot } = engine;
   const frameRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragSession | null>(null);
+  const prevBondRef = useRef(snapshot.bond);
   const [objects, setObjects] = useState<readonly InteractionObjectState[]>(() => createInteractionObjects());
   const [lastIntent, setLastIntent] = useState<DropIntentResult | null>(null);
+  const [immerse, setImmerse] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [selected, setSelected] = useState<DockItemId>('pet');
+  const [toastToken, setToastToken] = useState(0);
 
   const debugVisible =
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).get('debug') === '1';
 
+  useEffect(() => {
+    if (snapshot.beingPetted) setToastToken((n) => n + 1);
+  }, [snapshot.beingPetted]);
+
+  useEffect(() => {
+    if (snapshot.bond > prevBondRef.current + 0.01) setToastToken((n) => n + 1);
+    prevBondRef.current = snapshot.bond;
+  }, [snapshot.bond]);
+
   const toWorldPoint = (ev: React.PointerEvent): { x: number; y: number } => {
     const rect = frameRef.current?.getBoundingClientRect();
-    if (!rect || rect.width <= 0 || rect.height <= 0) return { x: 0, y: 0 };
+    if (!rect || rect.width <= 0 || rect.height <= 0) return { x: DESIGN_W / 2, y: DESIGN_H * 0.72 };
     return {
       x: ((ev.clientX - rect.left) / rect.width) * DESIGN_W,
       y: ((ev.clientY - rect.top) / rect.height) * DESIGN_H,
@@ -93,17 +108,21 @@ export function Stage(): React.JSX.Element {
     );
   };
 
-  const onObjectDown = (ev: React.PointerEvent<HTMLButtonElement>, obj: InteractionObjectState): void => {
+  const beginDrag = (ev: React.PointerEvent<HTMLButtonElement>, obj: InteractionObjectState): void => {
     ev.preventDefault();
     ev.stopPropagation();
     ev.currentTarget.setPointerCapture(ev.pointerId);
     const p = toWorldPoint(ev);
     dragRef.current = {
       id: obj.id,
-      offsetX: obj.x - p.x,
-      offsetY: obj.y - p.y,
+      offsetX: obj.dragging ? obj.x - p.x : 0,
+      offsetY: obj.dragging ? obj.y - p.y : 0,
     };
-    moveObject(obj.id, obj.x, obj.y, true);
+    moveObject(obj.id, p.x, p.y, true);
+  };
+
+  const onObjectDown = (ev: React.PointerEvent<HTMLButtonElement>, obj: InteractionObjectState): void => {
+    beginDrag(ev, obj);
   };
 
   const onObjectMove = (ev: React.PointerEvent<HTMLButtonElement>): void => {
@@ -135,9 +154,24 @@ export function Stage(): React.JSX.Element {
     resetObject(obj.id);
   };
 
+  const onDockSelect = (id: DockItemId): void => {
+    setSelected(id);
+    if (id === 'more') setArchiveOpen(false);
+  };
+
+  const onDockItemDown = (id: DockItemId, ev: React.PointerEvent<HTMLButtonElement>): void => {
+    if (id === 'pet' || id === 'more') return;
+    const obj = objects.find((candidate) => candidate.id === id);
+    if (!obj) return;
+    setSelected(id);
+    beginDrag(ev, obj);
+  };
+
+  const visibleObjects = objects.filter((obj) => obj.id === 'bowl' || obj.dragging);
+
   const interactionLayer = (
     <div className="ldc-objects" aria-label="Interaction objects">
-      {objects.map((obj) => (
+      {visibleObjects.map((obj) => (
         <button
           key={obj.id}
           type="button"
@@ -170,21 +204,42 @@ export function Stage(): React.JSX.Element {
     </div>
   );
 
+  const roomFrame = (
+    <div ref={frameRef} className="ldc-room__frame">
+      <div ref={engine.containerRef} className="ldc-room__canvas" />
+      {interactionLayer}
+      {snapshot.error && (
+        <div className="ldc-room__error">
+          <strong>渲染器初始化失败</strong>
+          <pre>{snapshot.error}</pre>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className={debugVisible ? 'ldc-root ldc-root--debug' : 'ldc-root ldc-root--room'}>
       {!debugVisible && (
-        <div className="ldc-room">
-          <div ref={frameRef} className="ldc-room__frame">
-            <div ref={engine.containerRef} className="ldc-room__canvas" />
-            {interactionLayer}
-            {snapshot.error && (
-              <div className="ldc-room__error">
-                <strong>渲染器初始化失败</strong>
-                <pre>{snapshot.error}</pre>
-              </div>
-            )}
-          </div>
-        </div>
+        <TerminalShell
+          catalogNo={snapshot.catalogNo}
+          displayName={snapshot.displayName}
+          bond={snapshot.bond}
+          energy={snapshot.energy}
+          hunger={snapshot.hunger}
+          hudHot={snapshot.beingPetted || snapshot.currentState !== 'Idle'}
+          toastToken={toastToken}
+          immerse={immerse}
+          selected={selected}
+          archiveOpen={archiveOpen}
+          onToggleImmerse={() => setImmerse((v) => !v)}
+          onSelect={onDockSelect}
+          onItemDown={onDockItemDown}
+          onItemMove={onObjectMove}
+          onItemUp={onObjectUp}
+          onToggleArchive={() => setArchiveOpen((v) => !v)}
+        >
+          {roomFrame}
+        </TerminalShell>
       )}
 
       {debugVisible && (
@@ -221,7 +276,7 @@ export function Stage(): React.JSX.Element {
                   {engine.isPaused ? '▶ 继续' : '⏸ 暂停'}
                 </button>
                 <button className="ldc-btn" onClick={engine.resetSpecies}>
-                  ↺ 还原 JSON
+                  ↻ 还原 JSON
                 </button>
                 <span className="ldc-stage__hint">
                   状态：<code>{snapshot.currentState}</code>
@@ -274,8 +329,8 @@ function createDropZones(
     bowl
       ? {
           kind: 'bowl',
-          x: bowl.home.x - 18,
-          y: bowl.home.y - 14,
+          x: bowl.x - 18,
+          y: bowl.y - 14,
           w: 36,
           h: 28,
         }
