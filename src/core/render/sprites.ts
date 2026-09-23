@@ -124,7 +124,7 @@ const BOWL: PixelSprite = {
     '..sskkkkkkkkkkss..',
     '.sskcddddddddckss.',
     '.skcddddddddddcks.',
-    '.skcddhhhhdddc k.'.replace(/ /g, ''),
+    '.skcdddhhhhdddcks.',
     '.skcddddddddddcks.',
     '..skccccccccccks..',
     '...skkkkkkkkkks...',
