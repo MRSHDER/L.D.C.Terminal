@@ -2,13 +2,7 @@
  * L.D.C. — Stage（Milestone 3：Interaction Foundation）
  *
  * 默认体验仍然是：一个房间，一只狗。
- * Milestone 3 的第一步只加入三个可拖动物体，让玩家开始表达意图：
- *   - meat 拖到嘴边：手喂
- *   - meat 拖到地面：丢到地上
- *   - meat 拖到碗里：放进碗
- *
- * 这一步只识别 intent，不在这里决定狗怎么回应。
- * 狗的回应后续仍然交给 core/world/FSM 与犬种数据。
+ * Milestone 3 的第一步只加入可拖动物体，让玩家开始表达意图。
  */
 
 import { useRef, useState } from 'react';
@@ -16,6 +10,7 @@ import { useEngine } from './hooks/useEngine';
 import { TuningPanel } from './ui/TuningPanel';
 import { SnapshotPanel } from './ui/SnapshotPanel';
 import { DiagnosticsPanel } from './ui/DiagnosticsPanel';
+import { ObjectGlyph } from './ObjectGlyph';
 import {
   createInteractionObjects,
   intentForDrop,
@@ -27,16 +22,9 @@ import {
 import './Stage.css';
 import './InteractionObjects.css';
 
-/** 设计分辨率：低分辨率像素风的基础画布尺寸 */
 const DESIGN_W = 320;
 const DESIGN_H = 200;
 
-/**
- * ★ 设计分辨率的宽高比必须与 Stage.css 中 `.ldc-stage__frame` 的
- *   `padding-top` 一致，否则画布会被裁切或拉伸。
- *   CSS 无法读取 TS 常量，因此在此做运行时断言 ——
- *   改动下面的数字却忘了改 CSS 时，会立刻在控制台报错。
- */
 const PADDING_TOP_PERCENT = 62.5;
 if (import.meta.env.DEV) {
   const actual = (DESIGN_H / DESIGN_W) * 100;
@@ -62,8 +50,6 @@ export function Stage(): React.JSX.Element {
   const [objects, setObjects] = useState<readonly InteractionObjectState[]>(() => createInteractionObjects());
   const [lastIntent, setLastIntent] = useState<DropIntentResult | null>(null);
 
-  // 调试面板仅在 ?debug=1 时出现。
-  // 默认体验 = 一个房间 + 一只狗，没有任何界面元素。
   const debugVisible =
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).get('debug') === '1';
@@ -155,13 +141,16 @@ export function Stage(): React.JSX.Element {
         <button
           key={obj.id}
           type="button"
-          className={obj.dragging ? 'ldc-object ldc-object--dragging' : 'ldc-object'}
+          className={
+            obj.dragging
+              ? `ldc-object ldc-object--${obj.id} ldc-object--dragging`
+              : `ldc-object ldc-object--${obj.id}`
+          }
           style={{
             left: `${(obj.x / DESIGN_W) * 100}%`,
             top: `${(obj.y / DESIGN_H) * 100}%`,
             width: `${(obj.size.w / DESIGN_W) * 100}%`,
             height: `${(obj.size.h / DESIGN_H) * 100}%`,
-            backgroundColor: colorToCss(obj.color),
           }}
           title={`${obj.label}: drag to dog, floor, or bowl`}
           onPointerDown={(ev) => onObjectDown(ev, obj)}
@@ -169,6 +158,7 @@ export function Stage(): React.JSX.Element {
           onPointerUp={onObjectUp}
           onPointerCancel={onObjectUp}
         >
+          <ObjectGlyph id={obj.id} />
           <span>{obj.label}</span>
         </button>
       ))}
@@ -308,8 +298,4 @@ function createDropZones(
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
-}
-
-function colorToCss(color: number): string {
-  return `#${color.toString(16).padStart(6, '0')}`;
 }
