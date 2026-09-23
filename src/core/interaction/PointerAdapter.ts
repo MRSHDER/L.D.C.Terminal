@@ -56,9 +56,9 @@ export class PointerAdapter {
   private readonly callbacks: PointerAdapterCallbacks;
   private readonly primaryOnly: boolean;
 
-  /** 坐标换算：CSS 像素 → 世界像素 */
-  private scaleX = 1;
-  private scaleY = 1;
+  /** 设计分辨率：CSS 像素 → 世界像素 的换算目标 */
+  private designW = 1;
+  private designH = 1;
 
   private disposed = false;
 
@@ -164,11 +164,13 @@ export class PointerAdapter {
    */
   private toSample(e: PointerEvent): PointerSample {
     const rect = this.element.getBoundingClientRect();
+    const scaleX = rect.width > 0 ? this.designW / rect.width : 1;
+    const scaleY = rect.height > 0 ? this.designH / rect.height : 1;
     const type: PointerSample['pointerType'] =
       e.pointerType === 'touch' ? 'touch' : e.pointerType === 'pen' ? 'pen' : 'mouse';
     return {
-      x: (e.clientX - rect.left) * this.scaleX,
-      y: (e.clientY - rect.top) * this.scaleY,
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
       atMs: performance.now(),
       pointerId: e.pointerId,
       isPrimary: e.isPrimary,
@@ -178,7 +180,7 @@ export class PointerAdapter {
 
   /** 告知设计分辨率，用于坐标换算 */
   setDesignSize(designW: number, designH: number): void {
-    this.scaleX = designW;
-    this.scaleY = designH;
+    this.designW = Math.max(1, designW);
+    this.designH = Math.max(1, designH);
   }
 }
