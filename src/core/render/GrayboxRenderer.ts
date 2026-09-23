@@ -232,12 +232,12 @@ export class GrayboxRenderer {
     g.moveTo(x0 + notch, -h + rearDrop)
       .lineTo(x1 - notch * 1.4, -h - frontLift)
       .lineTo(x1, -h - frontLift + notch)
-      .lineTo(x1 + 1, -Math.round(h * 0.42))
-      .lineTo(x1, -notch)
+      .lineTo(x1, -Math.round(h * 0.42))
+      .lineTo(x1 - 1, -notch)
       .lineTo(x1 - notch, 0)
       .lineTo(x0 + notch, 0)
-      .lineTo(x0, -notch)
-      .lineTo(x0 - 1, -Math.round(h * 0.45))
+      .lineTo(x0 + 1, -notch)
+      .lineTo(x0, -Math.round(h * 0.45))
       .lineTo(x0, -h + rearDrop + notch)
       .closePath()
       .fill({ color: fill });
@@ -264,12 +264,12 @@ export class GrayboxRenderer {
     g.moveTo(x0 + notch, -h + rearDrop)
       .lineTo(x1 - notch * 1.4, -h - frontLift)
       .lineTo(x1, -h - frontLift + notch)
-      .lineTo(x1 + 1, -Math.round(h * 0.42))
-      .lineTo(x1, -notch)
+      .lineTo(x1, -Math.round(h * 0.42))
+      .lineTo(x1 - 1, -notch)
       .lineTo(x1 - notch, 0)
       .lineTo(x0 + notch, 0)
-      .lineTo(x0, -notch)
-      .lineTo(x0 - 1, -Math.round(h * 0.45))
+      .lineTo(x0 + 1, -notch)
+      .lineTo(x0, -Math.round(h * 0.45))
       .lineTo(x0, -h + rearDrop + notch)
       .closePath()
       .stroke({ color: coat.outline, width: 1, alignment: 0 });
@@ -447,8 +447,9 @@ export class GrayboxRenderer {
     });
 
     const poseScale = rs.pose.bodyHeightRatio * p.scaleY;
-    const stand = Math.round(geo.legH * poseScale * 0.9);
-    const torsoY = baseY - stand;
+    const stand = Math.round(geo.legH * poseScale * 0.82);
+    const groundY = Math.round(baseY);
+    const torsoY = groundY - stand;
     this.bodyLayer.position.set(baseX, torsoY);
     this.bodyLayer.scale.set(dir * Math.abs(p.scaleX || 1), poseScale);
     this.bodyLayer.rotation = 0;
@@ -457,30 +458,33 @@ export class GrayboxRenderer {
     const legH = geo.legH;
     const legGap = geo.legGap;
     const phase = rs.pose.legPhase;
-    const overlap = Math.round(legH * 0.18);
-    const legTop = torsoY - overlap;
-    const frontX = dir * Math.round(geo.bodyW * 0.28);
-    const backX = -dir * Math.round(geo.bodyW * 0.32);
+    const walkAmount = Math.min(1, Math.max(0, rs.speedRatio * 2.8));
+    const legTop = torsoY - Math.max(1, Math.round(legH * 0.12));
+    const maxFootY = groundY - 1;
+    const frontX = dir * Math.round(geo.bodyW * 0.27);
+    const backX = -dir * Math.round(geo.bodyW * 0.31);
     const halfGap = Math.round(legGap / 2);
     const legDefs = [
-      { x: frontX + halfGap * 0.45, phaseOffset: Math.PI, isFar: true },
-      { x: backX + halfGap * 0.45, phaseOffset: 0, isFar: true },
-      { x: frontX - halfGap * 0.45, phaseOffset: 0, isFar: false },
-      { x: backX - halfGap * 0.45, phaseOffset: Math.PI, isFar: false },
+      { x: frontX + halfGap * 0.42, phaseOffset: Math.PI, isFar: true },
+      { x: backX + halfGap * 0.42, phaseOffset: 0, isFar: true },
+      { x: frontX - halfGap * 0.42, phaseOffset: 0, isFar: false },
+      { x: backX - halfGap * 0.42, phaseOffset: Math.PI, isFar: false },
     ];
     this.legGfx.clear();
     for (const leg of legDefs) {
-      const swingAmp = Math.round(geo.bodyW * 0.1 * Math.min(1, rs.speedRatio * 3 + 0.12));
       const lp = phase + leg.phaseOffset;
-      const swingX = Math.round(Math.sin(lp * Math.PI * 2) * swingAmp) * dir;
-      const lift = Math.round(
-        Math.abs(Math.cos(lp * Math.PI * 2)) * Math.max(2, legH * 0.22) * Math.min(1, rs.speedRatio * 2.4 + 0.08),
-      );
-      const lx = baseX + leg.x + swingX;
-      const ly = legTop + lift;
-      const visibleH = Math.max(4, baseY - ly - 1);
-      const sockH = coat.markings.socks ? Math.max(3, Math.round(visibleH * 0.28)) : 0;
-      const rustH = coat.markings.rustPoints ? Math.max(3, Math.round(visibleH * 0.36)) : 0;
+      const stride = Math.sin(lp * Math.PI * 2);
+      const planted = Math.cos(lp * Math.PI * 2) < 0;
+      const swingAmp = Math.round(geo.bodyW * 0.075 * walkAmount);
+      const lift = planted ? 0 : Math.round(Math.max(1, legH * 0.24) * walkAmount);
+      const lx = Math.round(baseX + leg.x + stride * swingAmp * dir);
+      const footY = maxFootY - lift;
+      const visibleH = Math.max(5, footY - legTop + 1);
+      const ly = footY - visibleH + 1;
+      const footW = legW + (planted ? 2 : 1);
+      const footX = lx - Math.floor((footW - legW) / 2);
+      const sockH = coat.markings.socks ? Math.max(2, Math.round(visibleH * 0.26)) : 0;
+      const rustH = coat.markings.rustPoints ? Math.max(2, Math.round(visibleH * 0.3)) : 0;
       const upperH = Math.max(2, visibleH - sockH - rustH);
       const fillUpper = leg.isFar ? coat.shade : coat.base;
       this.legGfx.rect(lx, ly, legW, upperH).fill({ color: fillUpper });
@@ -491,15 +495,17 @@ export class GrayboxRenderer {
       }
       if (sockH > 0) {
         this.legGfx.rect(lx, ly + upperH + rustH, legW, sockH).fill({ color: coat.white });
-        this.legGfx.rect(lx - 1, ly + visibleH - 2, legW + 2, 2).fill({ color: coat.whiteShade });
+        this.legGfx.rect(footX, footY - 1, footW, 2).fill({ color: coat.whiteShade });
       } else {
-        this.legGfx.rect(lx - 1, ly + visibleH - 2, legW + 2, 2).fill({ color: coat.outline });
+        this.legGfx.rect(footX, footY - 1, footW, 2).fill({ color: coat.outline });
       }
-      this.legGfx.rect(lx, ly, legW, 1).fill({ color: coat.highlight });
+      if (!leg.isFar) {
+        this.legGfx.rect(lx, ly, legW, 1).fill({ color: coat.highlight });
+      }
     }
 
-    let tailX = baseX - dir * geo.tailAttachPx;
-    let tailY = torsoY - Math.round(geo.bodyH * 0.55 * poseScale);
+    let tailX = Math.round(baseX - dir * geo.tailAttachPx);
+    let tailY = Math.round(torsoY - geo.bodyH * 0.68 * poseScale);
     let tailAngle = p.tailAnglesDeg[0] ?? 0;
     for (let i = 0; i < this.tailSegments.length; i++) {
       const seg = this.tailSegments[i];
@@ -515,9 +521,8 @@ export class GrayboxRenderer {
     }
     this.tailLayer.position.set(0, 0);
 
-    const headY =
-      torsoY - Math.round(geo.bodyH * poseScale * 0.58) + Math.round(rs.pose.headDropPx * poseScale);
-    const headX = baseX + dir * geo.headForwardPx;
+    const headY = Math.round(torsoY - geo.bodyH * poseScale * 0.54 + Math.round(rs.pose.headDropPx * poseScale));
+    const headX = Math.round(baseX + dir * geo.headForwardPx);
     this.headLayer.position.set(headX, headY);
     this.headLayer.scale.set(dir, 1);
     this.headLayer.rotation = ((p.rotationDeg * Math.PI) / 180) * 0.5;
@@ -539,10 +544,10 @@ export class GrayboxRenderer {
   private redrawEyes(rs: RenderState, headW: number, headH: number, coat: CoatConfig): void {
     const g = this.eyesGfx;
     g.clear();
-    const eyeX = Math.round(headW * 0.18);
-    const eyeY = -Math.round(headH * 0.62);
-    const eyeW = Math.max(2, Math.round(headW * 0.2));
-    const eyeH = Math.max(2, Math.round(headH * 0.2));
+    const eyeX = Math.round(headW * 0.14);
+    const eyeY = -Math.round(headH * 0.58);
+    const eyeW = Math.max(2, Math.round(headW * 0.16));
+    const eyeH = Math.max(2, Math.round(headH * 0.18));
     const rawClosure = rs.pose.sleeping ? 1 : Math.max(rs.procedural.eyeClosure, rs.pose.eyeClosure);
     const closure = rawClosure >= 0.9 ? 1 : rawClosure;
     if (closure >= 0.85) {
@@ -608,3 +613,5 @@ export class GrayboxRenderer {
     return this.app.ticker;
   }
 }
+
+
