@@ -1,6 +1,6 @@
 /**
  * L.D.C. — 渲染器（PixiJS）
- * 走路用生成 PNG 帧；坐/睡/摇尾/享受/吃用色板姿势帧。
+ * 默认用现有灰盒/生成帧。若 species.resources.sprites.clips.idle 可加载，则 idle 改播 sheet。
  */
 
 import {
@@ -18,6 +18,7 @@ import { PALETTE } from './palette';
 import { DOG_FRAME_H, DOG_FRAME_IMAGES, DOG_FRAME_W } from './spriteDogGenerated';
 import { POSE_CLIPS, POSE_H, POSE_W } from './spriteDogPoses';
 import { textureFromIndexed } from './indexedTexture';
+import { loadImage, readIdleClip, resolveSpeciesAssetUrl, sliceRowSheet } from './spriteAssets';
 
 export interface GrayboxRendererOptions {
   readonly designWidth: number;
@@ -27,6 +28,7 @@ export interface GrayboxRendererOptions {
 }
 
 const WALK_CLIPS = new Set(['Walk', 'Approach', 'Retreat']);
+const IDLE_CLIPS = new Set(['Idle', 'LookAt']);
 const POSE_SCALE = DOG_FRAME_W / POSE_W;
 
 function textureFromDataUrl(src: string): Promise<Texture> {
@@ -55,6 +57,8 @@ export class GrayboxRenderer {
   private readonly shadowLayer: Graphics;
   private dogTextures: Texture[] = [];
   private poseTextures: Record<string, Texture[]> = {};
+  private idleSheet: Texture[] | null = null;
+  private idleLoadGen = 0;
   private dog: Sprite | null = null;
   private species: SpeciesData | null = null;
   private initialized = false;
@@ -105,6 +109,7 @@ export class GrayboxRenderer {
     this.app.stage.addChild(this.stage);
     this.drawStaticBackground();
     this.initialized = true;
+    if (this.species) void this.loadIdleSheet(this.species);
   }
 
   setSpecies(species: SpeciesData): void {
@@ -115,6 +120,26 @@ export class GrayboxRenderer {
       this.species?.room.showGrid !== species.room.showGrid;
     this.species = species;
     if (roomChanged || !this.background.parent) this.drawStaticBackground();
+    void this.loadIdleSheet(species);
+  }
+
+  private async loadIdleSheet(species: SpeciesData): Promise<void> {
+    const gen = ++this.idleLoadGen;
+    this.idleSheet = null;
+    const declared = readIdleClip(species);
+    if (!declared) return;
+    const { sheet, clip } = declared;
+    const frameWidth = clip.frameWidth ?? sheet.defaults?.frameWidth ?? 96;
+    const frameHeight = clip.frameHeight ?? sheet.defaults?.frameHeight ?? 64;
+    const url = resolveSpeciesAssetUrl(species.resources.assetRoot, clip.src);
+    try {
+      const image = await loadImage(url);
+      if (gen !== this.idleLoadGen) return;
+      this.idleSheet = sliceRowSheet(image, frameWidth, frameHeight, clip.frames);
+    } catch {
+      if (gen !== this.idleLoadGen) return;
+      this.idleSheet = null;
+    }
   }
 
   private drawStaticBackground(): void {
@@ -139,6 +164,10 @@ export class GrayboxRenderer {
   }
 
   private pickTexture(rs: RenderState): Texture {
+    if (this.idleSheet && this.idleSheet.length > 0 && IDLE_CLIPS.has(rs.clipId)) {
+      this.usingPose = false;
+      return this.idleSheet[rs.frameIndex % this.idleSheet.length] ?? this.idleSheet[0]!;
+    }
     const poses = this.poseTextures[rs.clipId];
     if (poses && poses.length > 0) {
       this.usingPose = true;
