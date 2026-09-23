@@ -79,6 +79,10 @@ export interface EngineSnapshot {
   readonly degraded: boolean;
   readonly stateScores: Readonly<Record<string, number>>;
   readonly speciesIds: readonly string[];
+  readonly bond: number;
+  readonly energy: number;
+  readonly hunger: number;
+  readonly beingPetted: boolean;
 }
 
 const EMPTY_SNAPSHOT: EngineSnapshot = {
@@ -111,6 +115,10 @@ const EMPTY_SNAPSHOT: EngineSnapshot = {
   degraded: false,
   stateScores: {},
   speciesIds: [],
+  bond: 0,
+  energy: 0.72,
+  hunger: 0.38,
+  beingPetted: false,
 };
 
 export interface UseEngineResult {
@@ -180,7 +188,7 @@ export function useEngine(designWidth: number, designHeight: number): UseEngineR
     const renderer = new GrayboxRenderer({
       designWidth,
       designHeight,
-      showGrid: true,
+      showGrid: false,
     });
     rendererRef.current = renderer;
 
@@ -212,6 +220,10 @@ export function useEngine(designWidth: number, designHeight: number): UseEngineR
         degraded: loaded.degraded,
         stateScores: acc.stateScores,
         speciesIds: registry.ids(),
+        bond: world.bondSnapshot.bond,
+        energy: deriveEnergy(world.currentState, world.moodSnapshot.arousal, world.moodSnapshot.annoyance),
+        hunger: deriveHunger(world.elapsed),
+        beingPetted: world.isBeingPetted,
       });
     };
 
@@ -399,6 +411,19 @@ export function useEngine(designWidth: number, designHeight: number): UseEngineR
   };
 
   return { containerRef, snapshot, switchSpecies, patchSpecies, pause, resume, isPaused, resetSpecies };
+}
+
+function deriveEnergy(state: StateId, arousal: number, annoyance: number): number {
+  const sleeping = state === 'Sleep' || state === 'Sleeping';
+  return clamp01(0.62 + arousal * 0.28 - annoyance * 0.3 - (sleeping ? 0.32 : 0));
+}
+
+function deriveHunger(elapsedMs: number): number {
+  return clamp01(0.34 + (elapsedMs % 240000) / 480000);
+}
+
+function clamp01(value: number): number {
+  return Math.min(1, Math.max(0, value));
 }
 
 function deepClone<T>(value: T): T {
