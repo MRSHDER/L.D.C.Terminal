@@ -3,29 +3,49 @@
   "version": "1.0.0",
   "id": "graybox",
   "displayName": {
-    "zh": "灰盒基准体",
-    "en": "Graybox Baseline"
+    "zh": "灰盒·伯恩山形",
+    "en": "Graybox Bernese"
   },
   "catalogNo": "LDC-001",
   "description": {
-    "zh": "用于验证引擎管线的中性灰盒。所有可调参数都集中在此文件，修改后无需改动任何代码。",
-    "en": "Neutral gray box used to validate the engine pipeline. Every tunable parameter lives in this file; no code changes are required."
+    "zh": "按伯恩山犬侧视剪影与三色毛画的程序化灰盒。形在 silhouette，色在 coat，渲染器不写死犬种。",
+    "en": "Procedural graybox using Bernese Mountain Dog side-view proportions and tricolor markings. Shape lives in silhouette, color in coat."
   },
 
   "physical": {
-    "bodyScale": 1.0,
-    "hitbox": { "w": 58, "h": 52, "anchorY": 0.92 },
+    "bodyScale": 1.08,
+    "hitbox": { "w": 64, "h": 56, "anchorY": 0.92 },
     "grayboxTint": 16777215,
     "silhouette": {
-      "bodyLength": 1.08,
-      "chestDepth": 0.58,
-      "legLength": 0.78,
-      "headForward": 0.7,
-      "headSize": 0.48,
-      "snoutLength": 0.55,
-      "earShape": "prick",
-      "earLength": 0.62,
-      "tailAttach": 0.1
+      "bodyLength": 1.12,
+      "chestDepth": 0.66,
+      "legLength": 0.7,
+      "headForward": 0.66,
+      "headSize": 0.56,
+      "snoutLength": 0.46,
+      "earShape": "drop",
+      "earLength": 0.82,
+      "tailAttach": 0.14
+    },
+    "coat": {
+      "base": 1840658,
+      "shade": 920329,
+      "highlight": 3813932,
+      "outline": 657414,
+      "rust": 12076584,
+      "rustShade": 9059350,
+      "white": 15788242,
+      "whiteShade": 13944496,
+      "nose": 1712656,
+      "eye": 2763536,
+      "markings": {
+        "blaze": true,
+        "muzzle": true,
+        "bib": true,
+        "socks": true,
+        "rustPoints": true,
+        "tailTip": true
+      }
     }
   },
 

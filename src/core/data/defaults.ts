@@ -20,6 +20,7 @@ import type {
   PettingConfig,
   AnnoyanceConfig,
   SilhouetteConfig,
+  CoatConfig,
 } from './types';
 import { SPECIES_SCHEMA_VERSION, BEHAVIORS_SCHEMA_VERSION } from './types';
 
@@ -49,12 +50,35 @@ const DEFAULT_SILHOUETTE: SilhouetteConfig = {
   tailAttach: 0.1,
 };
 
+/** 无标记的中性灰。具体犬种在 species.json 里覆盖色板和 markings。 */
+export const DEFAULT_COAT: CoatConfig = {
+  base: 0x6e6e7a,
+  shade: 0x4a4a54,
+  highlight: 0x8e8e9a,
+  outline: 0x2a2a32,
+  rust: 0x6e6e7a,
+  rustShade: 0x4a4a54,
+  white: 0x8e8e9a,
+  whiteShade: 0x6e6e7a,
+  nose: 0x2a2a32,
+  eye: 0x14141a,
+  markings: {
+    blaze: false,
+    muzzle: false,
+    bib: false,
+    socks: false,
+    rustPoints: false,
+    tailTip: false,
+  },
+};
+
 const DEFAULT_PHYSICAL: PhysicalConfig = {
   bodyScale: 1,
   hitbox: { w: GRAYBOX_BASE_SIZE.w, h: GRAYBOX_BASE_SIZE.h, anchorY: 0.85 },
   pettingHotspots: [],
   grayboxTint: 0xffffff,
   silhouette: DEFAULT_SILHOUETTE,
+  coat: DEFAULT_COAT,
 };
 
 const DEFAULT_PERSONALITY: PersonalityConfig = {
@@ -255,7 +279,7 @@ export function resolveSilhouette(species: SpeciesData): ResolvedSilhouette {
   const earH = Math.max(4, Math.round(headH * sil.earLength));
   const earW = Math.max(3, Math.round(headW * (sil.earShape === 'drop' ? 0.32 : 0.22)));
   const legH = Math.max(8, Math.round(GRAYBOX_BASE_SIZE.h * scale * sil.legLength * 0.72));
-  const legW = Math.max(3, Math.round(Math.max(torsoW * 0.07, 3)));
+  const legW = Math.max(4, Math.round(Math.max(torsoW * 0.1, 4)));
   return {
     torsoW,
     torsoH,
@@ -279,5 +303,30 @@ export function resolveGrayboxSize(species: SpeciesData): { w: number; h: number
   return {
     w: Math.max(8, g.torsoW + Math.round(g.headW * 0.55) + g.snoutW),
     h: Math.max(8, g.torsoH + g.legH),
+  };
+}
+
+export function resolveCoat(species: SpeciesData): CoatConfig {
+  const c = species.physical.coat;
+  if (!c) return DEFAULT_COAT;
+  return {
+    base: c.base ?? DEFAULT_COAT.base,
+    shade: c.shade ?? DEFAULT_COAT.shade,
+    highlight: c.highlight ?? DEFAULT_COAT.highlight,
+    outline: c.outline ?? DEFAULT_COAT.outline,
+    rust: c.rust ?? DEFAULT_COAT.rust,
+    rustShade: c.rustShade ?? DEFAULT_COAT.rustShade,
+    white: c.white ?? DEFAULT_COAT.white,
+    whiteShade: c.whiteShade ?? DEFAULT_COAT.whiteShade,
+    nose: c.nose ?? DEFAULT_COAT.nose,
+    eye: c.eye ?? DEFAULT_COAT.eye,
+    markings: {
+      blaze: c.markings?.blaze ?? false,
+      muzzle: c.markings?.muzzle ?? false,
+      bib: c.markings?.bib ?? false,
+      socks: c.markings?.socks ?? false,
+      rustPoints: c.markings?.rustPoints ?? false,
+      tailTip: c.markings?.tailTip ?? false,
+    },
   };
 }
