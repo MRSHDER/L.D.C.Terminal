@@ -1,4 +1,4 @@
-﻿# L.D.C. — LOW-DEFINITION CANINE DATABASE
+# L.D.C. — LOW-DEFINITION CANINE DATABASE
 
 > 一个以「犬类数据库」为世界观的像素风数字生命档案。
 >
@@ -6,6 +6,14 @@
 > 玩家不是在升级宠物，而是在观察、陪伴、记录不同的犬种。
 
 低分辨率像素风 · GBA / NDS 质感 · 黑白灰为主，天蓝点缀 · 8~12 FPS 的低帧率生命感
+
+## 🌐 在线体验
+
+**https://mrshder.github.io/L.D.C.Terminal/**
+
+打开后整个屏幕就是一个房间。**用鼠标按住那只狗** —— 没有按钮，没有菜单。
+
+调试面板在网址后加 `?debug=1` 时出现（默认刻意保持纯净）。
 
 ---
 
@@ -91,6 +99,22 @@ npm run calibrate          # 骚扰阈值标定（21 项节奏判定）
 | `npm run sim -- <id> <秒数>` | 无头模拟，输出状态分布（无需浏览器） |
 | `npm run species:new -- --id X --name Y` | 生成新犬种脚手架 |
 | `npm run verify` | 校验 + 构建 |
+
+### 部署
+
+推送到 `main` 会**自动部署**到 GitHub Pages（见 `.github/workflows/deploy-pages.yml`）。
+
+构建流程包含三道回归闸门，任一失败就不发布：
+
+1. `species:validate` —— 犬种 JSON 非法则直接失败
+2. `pet`（三个犬种）—— 互动检查必须全通过
+3. `calibrate` —— 骚扰阈值判定必须全通过
+
+> **关于 base path**：GitHub Pages 的项目站点位于 `/<仓库名>/` 子路径下。
+> 若 vite 的 `base` 保持默认的 `/`，产物里的资源会指向 `/assets/...`，
+> 而实际路径是 `/L.D.C.Terminal/assets/...` —— 整站白屏。
+> 因此 workflow 里构建时传 `--base=/L.D.C.Terminal/`。
+> 换仓库名时需要同步修改这一处。
 
 ### 为什么有这么多"标定"工具
 
