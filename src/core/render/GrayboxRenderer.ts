@@ -24,7 +24,8 @@ export interface GrayboxRendererOptions {
   readonly showGrid?: boolean;
 }
 
-const DOG_WALK_TEXTURE_INDEXES = [1, 2, 1, 2] as const;
+const WALK_CLIPS = new Set(['Walk', 'Approach', 'Retreat']);
+const SIT_CLIPS = new Set(['Sit', 'PetEnjoy']);
 
 function textureFromDataUrl(src: string): Promise<Texture> {
   return new Promise((resolve, reject) => {
@@ -41,6 +42,20 @@ function textureFromDataUrl(src: string): Promise<Texture> {
     img.onerror = () => reject(new Error('dog frame decode failed'));
     img.src = src;
   });
+}
+
+function pickDogTexture(rs: RenderState, textures: Texture[]): Texture {
+  const idle = textures[0]!;
+  const count = textures.length;
+  if (count <= 1) return idle;
+
+  if (WALK_CLIPS.has(rs.clipId) || rs.moving) {
+    return textures[rs.frameIndex % count] ?? idle;
+  }
+  if (SIT_CLIPS.has(rs.clipId) || rs.pose.sleeping) {
+    return textures[Math.min(count - 1, 0)] ?? idle;
+  }
+  return idle;
 }
 
 export class GrayboxRenderer {
@@ -126,7 +141,7 @@ export class GrayboxRenderer {
     if (!room?.showGrid) return;
     const step = 24;
     for (let x = 0; x <= w; x += step) this.grid.rect(x, 0, 1, h).fill({ color: PALETTE.grid });
-    for (let y = 0; y <= h; y += step) this.grid.rect(0, y, w, 1).fill({ color: PALETTE.grid });
+    for (let y = 0; y <= h; y += step) this.grid.rect(0, y, 1, w).fill({ color: PALETTE.grid });
   }
 
   render(rs: RenderState): void {
@@ -136,11 +151,7 @@ export class GrayboxRenderer {
     const facingRight = rs.facingDeg >= -90 && rs.facingDeg <= 90;
     const dir = facingRight ? 1 : -1;
     const moving = rs.moving || rs.speedRatio > 0.05;
-    const frame = Math.max(0, rs.frameIndex);
-    const walkFrame = frame % DOG_WALK_TEXTURE_INDEXES.length;
-    const dogTexture = moving
-      ? this.dogTextures[DOG_WALK_TEXTURE_INDEXES[walkFrame] ?? 1] ?? this.dogTextures[0]
-      : this.dogTextures[0];
+    const dogTexture = pickDogTexture(rs, this.dogTextures);
     if (dogTexture && this.dog.texture !== dogTexture) this.dog.texture = dogTexture;
 
     const scaleBase = 1.06;
