@@ -67,7 +67,35 @@
             }
           }
         },
-        "grayboxTint": { "type": "integer", "minimum": 0, "maximum": 16777215, "default": 16777215 }
+        "grayboxTint": { "type": "integer", "minimum": 0, "maximum": 16777215, "default": 16777215 },
+        "coat": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "base": { "type": "integer", "minimum": 0, "maximum": 16777215 },
+            "shade": { "type": "integer", "minimum": 0, "maximum": 16777215 },
+            "highlight": { "type": "integer", "minimum": 0, "maximum": 16777215 },
+            "outline": { "type": "integer", "minimum": 0, "maximum": 16777215 },
+            "rust": { "type": "integer", "minimum": 0, "maximum": 16777215 },
+            "rustShade": { "type": "integer", "minimum": 0, "maximum": 16777215 },
+            "white": { "type": "integer", "minimum": 0, "maximum": 16777215 },
+            "whiteShade": { "type": "integer", "minimum": 0, "maximum": 16777215 },
+            "nose": { "type": "integer", "minimum": 0, "maximum": 16777215 },
+            "eye": { "type": "integer", "minimum": 0, "maximum": 16777215 },
+            "markings": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "blaze": { "type": "boolean" },
+                "muzzle": { "type": "boolean" },
+                "bib": { "type": "boolean" },
+                "socks": { "type": "boolean" },
+                "rustPoints": { "type": "boolean" },
+                "tailTip": { "type": "boolean" }
+              }
+            }
+          }
+        }
       }
     },
     "personality": {
