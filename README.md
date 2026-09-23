@@ -1,4 +1,4 @@
-# L.D.C. — LOW-DEFINITION CANINE DATABASE
+﻿# L.D.C. — LOW-DEFINITION CANINE DATABASE
 
 > 一个以「犬类数据库」为世界观的像素风数字生命档案。
 >
@@ -9,11 +9,10 @@
 
 ---
 
-## 当前状态：Milestone 2 — The First Connection
+## 当前状态：Alpha 打磨
 
-**一个房间。一只狗。没有 UI、没有菜单、没有按钮。**
-
-玩家唯一能做的事是「摸它」。
+**M1 引擎骨架** 与 **M2 The First Connection** 已完成，
+当前处于 Alpha 打磨阶段：**不新增功能**，只优化交互、动画与节奏。
 
 ```
 第一次摸   →  它看向你
@@ -31,13 +30,24 @@
 |---|---|---|
 | **M1** | 引擎骨架（GameLoop / EventBus / SpeciesLoader / FSM / Animation / 灰盒渲染） | ✅ |
 | **M2** | 羁绊系统 · 情绪系统 · 手势识别 · 六个互动状态 · 房间 | ✅ |
+| **Alpha** | 行为随机性 · 步态动画 · 微行为 · 抚摸语义修正 | ✅ |
 
 **验收**：三个灰盒犬种在**零代码改动**下表现出可测量的性格差异。
 
 | | graybox | graybox-shy | graybox-swift |
 |---|---|---|---|
-| 摸 5 次后羁绊 | 0.99（闭眼） | **0.33**（仍在观望） | — |
+| 摸 5 次后 | 0.78（摇尾巴） | **0.57（仍在犹豫着靠近）** | 0.78 |
 | 连点到走开 | 第 10 次 | **第 9 次** | **第 7 次** |
+| 静止时占比最高 | Walk 46% | **Sit 59%** | **Walk 64%** |
+
+### 贴近体验的两个细节
+
+**它自己有事做**：不摸它时，它会抖耳朵、甩头、打哈欠、伸懒腰、
+叹气 —— 这些动作没有目的、不受玩家影响、时机随机。
+恰恰是"没有目的"让它们显得真实。
+
+**每一次抚摸都有回应**：8 次抚摸依次触发
+看向你 → 靠近 → 坐下 → 摇尾巴 → 闭眼，羁绊 0.22 逐步涨到 0.96。
 
 ---
 
@@ -189,7 +199,8 @@ npm run species:new -- --id shiba-inu --name "柴犬" --name-en "Shiba Inu" --ca
 
 | 文档 | 内容 |
 |---|---|
-| [docs/MILESTONE_2.md](docs/MILESTONE_2.md) | **The First Connection**：羁绊/情绪机制、标定数据、踩坑记录 |
+| [docs/ALPHA_POLISH.md](docs/ALPHA_POLISH.md) | **Alpha 打磨记录**：五轮修复、踩坑、验收数据 |
+| [docs/MILESTONE_2.md](docs/MILESTONE_2.md) | The First Connection：羁绊/情绪机制、标定数据 |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 架构设计、数据流、状态机算法、渲染陷阱 |
 | [docs/SPECIES_AUTHORING.md](docs/SPECIES_AUTHORING.md) | 新增犬种指南、字段对照表、调参流程 |
 
@@ -210,7 +221,9 @@ npm run species:new -- --id shiba-inu --name "柴犬" --name-en "Shiba Inu" --ca
 ```
 M1  引擎骨架 + 灰盒验证              ✅ 已完成
 M2  The First Connection            ✅ 已完成
-     一个房间 · 摸它 · 羁绊 + 情绪
+      一个房间 · 摸它 · 羁绊 + 情绪
+Alpha 打磨                           ✅ 已完成
+      行为随机性 · 步态动画 · 微行为 · 抚摸语义
 M3  拖拽：🍖 ⚽ 🥣 三个东西           ← 下一步
      拖到嘴边 → 吃 / 拖到地上 → 闻 → 决定 / 拖到碗 → 走过去吃
 M4  Personality：真正体现犬种差异
