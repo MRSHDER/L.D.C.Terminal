@@ -1,0 +1,63 @@
+/* Milestone 3 interaction objects: pixel UI inside the room, not external controls. */
+
+.ldc-objects {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  font-family: var(--ldc-font-mono);
+}
+
+.ldc-object {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid #0e0e12;
+  border-radius: 0;
+  color: #0e0e12;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.35),
+    0 2px 0 rgb(0 0 0 / 0.35);
+  cursor: grab;
+  image-rendering: pixelated;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.ldc-object span {
+  display: none;
+}
+
+.ldc-object::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-top: 1px solid rgb(255 255 255 / 0.35);
+}
+
+.ldc-object--dragging {
+  cursor: grabbing;
+  z-index: 3;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.45),
+    0 0 0 1px var(--ldc-accent),
+    0 3px 0 rgb(0 0 0 / 0.45);
+}
+
+.ldc-intent-readout {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  padding: 3px 5px;
+  color: var(--ldc-accent);
+  background: rgb(14 14 18 / 0.82);
+  border: 1px solid var(--ldc-line);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
