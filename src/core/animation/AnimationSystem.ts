@@ -125,8 +125,14 @@ const POSE_BY_STATE: Readonly<Record<string, PoseTarget>> = {
   Approach: { bodyHeightRatio: 0.97, headDropPx: 0, sleeping: false },
   // 摇尾巴：站直且抬头，配合情绪层拉高的 arousal → 尾巴自动摆得欢
   WagTail: { bodyHeightRatio: 1.0, headDropPx: -4, sleeping: false },
-  // 闭眼享受：坐下 + 头微垂（放松），眼睛闭合 0.85（缓慢闭眼，非瞬间）
-  PetEnjoy: { bodyHeightRatio: 0.7, headDropPx: 8, sleeping: false, eyeClosure: 0.85 },
+  // 闭眼享受：坐下 + 头微垂（放松）。
+  // ★ 目标值取 1.0 而非 0.85。
+  //   姿态插值是指数逼近（每帧向目标靠近一部分），
+  //   若目标恰好等于"判定为闭合"的阈值（0.85），
+  //   插值会渐近逼近但永远达不到 —— 实测眼睛稳定在 0.81，
+  //   视觉上一直停在"半闭"，玩家看不到明确的"闭上眼睛"。
+  //   取 1.0 让插值有明确目标，约 600ms 后稳定在全闭状态。
+  PetEnjoy: { bodyHeightRatio: 0.7, headDropPx: 8, sleeping: false, eyeClosure: 1.0 },
   // 烦躁：站直、头略偏（回避感）
   Annoyed: { bodyHeightRatio: 1.0, headDropPx: 2, sleeping: false },
   // 走开：走动姿态

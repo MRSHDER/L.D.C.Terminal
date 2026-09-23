@@ -347,7 +347,6 @@ export function validateSpeciesShape(raw: Record<string, unknown>): ValidationEr
 /** 校验 behaviors.json 的原始数据 */
 export function validateBehaviorsShape(raw: Record<string, unknown>): ValidationErrors {
   const errors: ValidationErrors = [];
-
   const stateWeights = raw['stateWeights'];
   if (stateWeights !== undefined) {
     if (!isObject(stateWeights)) {

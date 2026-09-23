@@ -34,7 +34,7 @@
   },
 
   "cognition": {
-    "decisionIntervalMs": 180,
+    "decisionIntervalMs": 260,
     "reactionDelayMs": [60, 180],
     "attentionSpanMs": 4000,
     "memorySpanMs": 20000,
@@ -56,7 +56,7 @@
     "walkSpeedPx": 62,
     "runSpeedPx": 118,
     "turnRateDeg": 420,
-    "idleWanderRadiusPx": 110,
+    "idleWanderRadiusPx": 52,
     "wanderChancePerMin": 14,
     "arriveThresholdPx": 2
   },

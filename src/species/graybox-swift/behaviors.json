@@ -3,17 +3,17 @@
   "id": "graybox-swift",
 
   "stateWeights": {
-    "Idle": 18,
-    "Walk": 58,
-    "Sit": 6,
-    "Sleep": 4
+    "Idle": 22,
+    "Walk": 26,
+    "Sit": 30,
+    "Sleep": 22
   },
 
   "personalityBias": {
-    "Walk": { "energy": { "sensitivity": 1.7 } },
-    "Sit": { "energy": { "sensitivity": -1.1 } },
-    "Sleep": { "energy": { "sensitivity": -1.5 } },
-    "Idle": { "curiosity": { "sensitivity": 0.6 } }
+    "Walk": { "energy": { "sensitivity": 0.9 } },
+    "Sit": { "energy": { "sensitivity": -0.3 } },
+    "Sleep": { "energy": { "sensitivity": -0.4 } },
+    "Idle": { "curiosity": { "sensitivity": 0.3 } }
   },
 
   "interactionResponse": {},

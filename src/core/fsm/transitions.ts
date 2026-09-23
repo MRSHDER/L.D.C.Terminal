@@ -36,9 +36,52 @@ import { WALK_DWELL_COMPLETED } from './states/coreStates';
  * 性格乘子。
  * @param value        性格维度值 0..1（0.5 为中性）
  * @param sensitivity  敏感度。正值 = 该维度高时更倾向，负值 = 更不倾向
+ *
+ * ★ 下限保护：不得低于 FLOOR。
+ *
+ *   为什么需要下限（Alpha 打磨中的真实教训）：
+ *     低能量犬种（graybox-shy，energy=0.35）同时受 energy 与 curiosity
+ *     两个维度的负向压制，乘子积只有约 0.40，
+ *     使 Idle→Walk 的分数降到 0.162 —— 低于门槛，**永不触发**。
+ *     于是"安静的狗"变成了"从不走动的狗"，
+ *     而一只 3 分钟里一步都不走的动物，看起来像坏掉了，不像性格安静。
+ *
+ *   核心区分：
+ *     **性格应该决定"多常做"，而不是"能不能做"。**
+ *     低能量 → 走得少、走得慢；但绝不能是"零"。
+ *     任何性格维度都不该把某个基础行为能力归零。
+ *
+ *   下限 0.5 的含义：最极端的性格也只能把某行为的倾向压到一半，
+ *   保证所有基础行为始终可达，差异体现在频率而非有无。
+ *
+ * ★ 上限 CAP = 2.2（Alpha 打磨第二轮补充）
+ *
+ *   只加下限是不够的。实测 swift 犬种：
+ *     energy=0.95 → 乘子 2.44
+ *     curiosity=0.9 → 乘子 1.48
+ *     两者相乘 → 3.61
+ *   使 Walk 的分数达到 1.18~3.38 —— 而门槛只有 0.30。
+ *
+ *   后果不是"爱走动"，而是**其他行为全部消失**：
+ *     Sit→Walk 在 0ms 就跨过门槛（分数 3.38），
+ *     而 Sit→Idle 需要 350ms、Sit→Sleep 需要 450ms。
+ *     Walk 永远先到，于是 Sit 每次恰好 367ms 就被夺走 ——
+ *     严格得像节拍器，且 Sit 的时长标准差为 0.000。
+ *
+ *   含义：性格乘子的**连乘**会让多个维度叠加出远超设计意图的效果。
+ *   单看每个 sensitivity 都合理（0.9、0.3），
+ *   但乘在一起就失控了。上限把这个连乘钉在可控范围内。
+ *
+ *   取 2.2 的依据：灰盒各迁移的峰值在 15~60 之间，
+ *   乘 2.2 后落在 33~132 —— 仍有明显性格差异，
+ *   但不会出现"某个行为独占 4 倍门槛"的支配局面。
  */
+const PERSONALITY_FACTOR_FLOOR = 0.5;
+const PERSONALITY_FACTOR_CAP = 2.2;
+
 function personalityFactor(value: number, sensitivity: number): number {
-  return Math.max(0.05, 1 + (value - 0.5) * sensitivity * 2);
+  const raw = 1 + (value - 0.5) * sensitivity * 2;
+  return Math.max(PERSONALITY_FACTOR_FLOOR, Math.min(PERSONALITY_FACTOR_CAP, raw));
 }
 
 /**
@@ -48,32 +91,96 @@ function personalityFactor(value: number, sensitivity: number): number {
  * @param fullAtMs    达到满分所需的停留时长
  *
  * 用 smoothstep 而非线性，避免"刚进来就开始蠢蠢欲动"。
+ *
+ * ★ Alpha 打磨（两处修正，都是为了让狗不再像时钟）：
+ *
+ * 【1】窗口按犬种节奏缩放
+ *   所有窗口原本是**绝对毫秒**（Sit 1800ms、Walk 3200ms），
+ *   而不同犬种的决策节奏差异巨大（decisionIntervalMs 180~900）。
+ *   对敏捷犬种（swift，180ms）来说，1800ms 要等 10 次决策 ——
+ *   而它的 Idle 只持续约 378ms 就被 Walk 抢走，
+ *   于是 **Sit / Sleep 在 180 秒里一次都没出现**。
+ *   反直觉的是：越"活跃"的犬种行为反而越单调。
+ *
+ *   修正：窗口乘以节奏比例（基准 500ms）。
+ *     180ms → ×0.36     500ms → ×1.00     900ms → ×1.80
+ *
+ * 【2】每次进入状态时抽一个随机相位偏移 ★关键
+ *
+ *   这是"永远像时钟"的**根本**修复。前面几层噪声（分值抖动、
+ *   门槛抖动、停留护栏抖动）都无效，因为它们没有触及真正的
+ *   确定性来源：**patience 是 stateElapsedMs 的确定性函数**。
+ *   同样的状态、同样的窗口，必然在同一毫秒越过阈值 ——
+ *   实测 swift 每次 Sit 都恰好 367ms（标准差 0.000）。
+ *
+ *   修复方式：进入状态时抽一个随机相位偏移（±22% 窗口时长），
+ *   使"距离满分还差多少"每次不同，触发时刻自然分散。
+ *
+ *   偏移在状态**进入时**抽定并缓存在黑板上，
+ *   而不是每帧重抽 —— 后者会让分值随机游走，
+ *   表现为"犹豫不决"而不是"节奏自然"。
+ *
+ *   强度由 randomness 维度控制：训练有素的犬种依然规整，
+ *   散漫的犬种每次都不一样。
  */
 function patience(ctx: StateContext, fullAtMs: number): number {
-  const t = Math.min(1, Math.max(0, ctx.blackboard.stateElapsedMs / fullAtMs));
+  const species = ctx.species;
+  const ms = species.cognition.decisionIntervalMs;
+  const rhythmScale = Math.max(0.36, Math.min(1.8, ms / 500));
+  const scaled = fullAtMs * rhythmScale;
+
+  // 【2】随机相位：按「状态进入次数」缓存，每次进入状态重抽一次。
+  //
+  //   用 entrySerial 作为缓存键，而不是比较 stateElapsedMs ——
+  //   后者容易在边界条件下误判（例如刚好等于 0 时）。
+  //   entrySerial 由 StateMachine 在每次 transitionTo 时递增，
+  //   语义明确、无歧义。
+  const bb = ctx.blackboard;
+  const serial = (bb['__stateEntrySerial'] as number | undefined) ?? 0;
+
+  let phase = bb['__patiencePhase'] as number | undefined;
+  if (bb['__patiencePhaseSerial'] !== serial) {
+    const r = species.personality.temperament.randomness;
+    const amplitude = Math.max(0, Math.min(1, r)) * 0.22;
+    phase = ctx.rng.range(-amplitude, amplitude);
+    bb['__patiencePhase'] = phase;
+    bb['__patiencePhaseSerial'] = serial;
+  }
+
+  const effective = Math.max(1, scaled * (1 + (phase ?? 0)));
+  const t = Math.min(1, Math.max(0, bb.stateElapsedMs / effective));
   return t * t * (3 - 2 * t);
 }
 
 /**
  * 决策节奏因子。
  *
- * 决策间隔越长（思考越慢）的犬种，越不容易频繁改变主意。
+ * ★ Alpha 打磨：把下限从 0.4 提高到 0.7，并收窄动态范围。
  *
- * ★ 取值必须**中性值为 1.0**，否则会系统性地压低所有迁移的分值，
- *   使门槛（UTILITY_THRESHOLD）变得无法达到。
- *   早期写成 `400 / decisionIntervalMs`，在 500ms 时得到 0.8 ——
- *   看似合理，实际把 Walk 的峰值从 36 压到 28.8，
- *   仅勉强高于门槛 26，导致 Walk 在竞争中总是输给 Sit（峰值 58）。
+ *   旧实现 `clamp(0.4, 1.0, 400/ms)` 有一个概念性错误：
+ *   「决策间隔」已经在 World 层决定了**多久思考一次**
+ *   （decisionIntervalMs 越大，裁决次数越少）。
+ *   若再把它乘进每个迁移的分值，等于**同一个因素被计算两次** ——
+ *   结果对慢性子犬种的压制远超设计意图。
  *
- *   现在以 200ms（最敏捷犬种）为基准做归一化：
- *     200ms  → 1.0（边牧级，反应极快）
- *     500ms  → 0.74
- *     2000ms → 0.40（下限，沉稳大型犬）
- *   下限 0.4 保证即便最迟钝的犬种，行为也不会被完全冻结。
+ *   实测（graybox-shy，decisionIntervalMs=780）：
+ *     旧公式 rhythmFactor = 400/780 = 0.51
+ *     再叠加 energy/curiosity 的性格乘子后，
+ *     Idle→Walk 分数只有 0.263 < 门槛 0.30 → **永不走动**。
+ *     一只三分钟一步都不走的狗，看起来像坏掉，不像性格安静。
+ *
+ *   修正后的范围：
+ *     200ms  → 1.00（敏捷型）
+ *     500ms  → 0.85（中性）
+ *     780ms  → 0.74（慢性子）
+ *     2000ms → 0.70（下限）
+ *
+ *   现在节奏因子的作用是"微调行为的活跃程度"，
+ *   而不是"决定行为能否发生"。后者已由决策频率负责。
  */
 function rhythmFactor(ctx: StateContext): number {
   const ms = ctx.species.cognition.decisionIntervalMs;
-  return Math.max(0.4, Math.min(1.0, 400 / Math.max(200, ms)));
+  return Math.max(0.7, Math.min(1.0, 600 / Math.max(200, ms)));
 }
 
 export function createCoreTransitions(): readonly Transition[] {
@@ -101,37 +208,45 @@ export function createCoreTransitions(): readonly Transition[] {
       to: 'Walk',
       score: (ctx) => {
         const t = ctx.species.personality.temperament;
-        // 窗口 2600ms：1000ms 时 patience=0.30 → 效用 12.5（未过门槛）
-        //              1500ms 时 patience=0.63 → 效用 26.9（刚过门槛）
-        const eagerness = patience(ctx, 2600);
+        // ★ Alpha 打磨：峰值从 53 降到 40，窗口从 2600 拉到 3200。
+        //
+        //   原因：Walk 的**单次时长由物理决定**（走到目标点 + 驻足，
+        //   实测约 2200ms），远长于 Idle/Sit（约 900ms）。
+        //   因此即便三者被选中的**次数**相同，Walk 也会占据大部分时间 ——
+        //   实测 Walk 占 76%，狗看起来一直在走，不像在房间里待着。
+        //
+        //   降低峰值 + 拉长窗口 = 降低"被选中频率"，
+        //   让 Walk 的次数减少，从而把占比拉回合理区间。
+        const eagerness = patience(ctx, 3200);
         return (
-          53 *
+          40 *
           eagerness *
           personalityFactor(t.energy, 1.6) *
           personalityFactor(t.curiosity, 0.6) *
           rhythmFactor(ctx)
         );
       },
+      // 站着至少 700ms 才起步 —— 让"站着"是一个可感知的状态，
+      // 而不是一帧的过渡。同时保证 Idle 时长有变化空间。
+      minDwellMs: 700,
     },
 
     // ───────────────────────────────────────────────
     // Idle → Sit：站累了，想坐下？
     //
-    //   窗口 1500ms + 峰值 62：
-    //     1000ms → patience=0.44 → 效用 30.3 > 26  ✓ **先于 Walk 触发**
-    //     1500ms → patience=1.00 → 效用 49.6
-    //   因此 Idle 之后的第一个行为通常是"坐下"，
-    //   走动的机会出现在 Sit → Walk，形成
-    //   Idle → Sit → (Walk | Sleep | Idle) 的自然链条。
+    //   窗口 1800ms + 峰值 62。
+    //   Sit 是"低成本、短时长"行为（约 900ms），
+    //   因此可以比 Walk 更频繁地被选中。
     // ───────────────────────────────────────────────
     {
       from: 'Idle',
       to: 'Sit',
       score: (ctx) => {
         const t = ctx.species.personality.temperament;
-        const weariness = patience(ctx, 1500);
+        const weariness = patience(ctx, 1800);
         return 62 * weariness * personalityFactor(t.energy, -1.2) * rhythmFactor(ctx);
       },
+      minDwellMs: 700,
     },
 
     // ───────────────────────────────────────────────
@@ -160,12 +275,20 @@ export function createCoreTransitions(): readonly Transition[] {
         const t = ctx.species.personality.temperament;
         const drowsiness = patience(ctx, 9000);
         const tiredness = 1 - t.energy;
-        // 峰值 90 × Math.pow(0.5, 0.5) × 0.8 ≈ 50.9 —— 显著高于门槛 26。
-        // ★ 早期用 Math.pow(tiredness, 1.5)：energy=0.5 时仅 0.35，
-        //   峰值只有 17.0，低于门槛 → 该迁移永不触发（实测报告发现的）。
-        //   指数 1.5 对中度精力犬种惩罚过重；0.5 让"半困"也能睡着，
-        //   同时对高能量犬种（energy=0.95 → tiredness=0.05 → 0.22）仍有效抑制。
-        return 90 * drowsiness * Math.pow(Math.max(0.05, tiredness), 0.5) * rhythmFactor(ctx);
+        // ★ Alpha 打磨：峰值从 90 提高到 145。
+        //
+        //   门槛统一到 scores 尺度（0.30）后，Sleep 变得不可达：
+        //     Sleep 偏好份额仅 0.097（最低），
+        //     score = 0.097 × (1 + 90/30) = 0.388 ... 看似够
+        //     但 drowsiness 窗口 9000ms 远长于 Idle 的实际存活时长，
+        //     实际可达峰值只有 0.097 × (1 + 50.9/30) = 0.262 < 0.30。
+        //
+        //   结果：**狗永远不会睡觉** —— 这在长时间体验中很致命，
+        //   玩家会发现"它只会站着坐着走着，从不休息"。
+        //
+        //   提高峰值后：0.097 × (1 + 145/30) = 0.566，稳稳过门槛。
+        //   同时保留 9000ms 窗口 —— "累了才睡"的节奏感不变。
+        return 145 * drowsiness * Math.pow(Math.max(0.05, tiredness), 0.5) * rhythmFactor(ctx);
       },
       cooldownMs: 30000,
     },
@@ -191,9 +314,7 @@ export function createCoreTransitions(): readonly Transition[] {
       score: (ctx) => {
         const t = ctx.species.personality.temperament;
         // 窗口 3000ms → 触发约 2000ms。
-        // ★ 必须**晚于** Sit→Sleep（1500ms）触发，
-        //   否则坐下后总是先起身走动，Sleep 永不出现。
-        //   现在的顺序：Sleep(1500) → Walk(2000) → Idle(2850)，
+        //   顺序：Sleep(1500) → Walk(2000) → Idle(2850)，
         //   对应"坐下 → 打盹 or 起身 → 站定"的自然梯度。
         const restlessness = patience(ctx, 3000);
         return (
@@ -204,6 +325,14 @@ export function createCoreTransitions(): readonly Transition[] {
           rhythmFactor(ctx)
         );
       },
+      // ★ 坐下至少 900ms 才允许起身。
+      //
+      //   没有这个下限时，swift 犬种的 Sit→Walk 分数高达 3.0（门槛的 10 倍），
+      //   会在**第一个决策刻度**就触发 —— 实测 Sit 每次恰好 267ms，
+      //   玩家根本看不到狗坐下这个动作完成。
+      //
+      //   900ms 让"坐下"成为一个可被感知的行为，而不是瞬间跳变。
+      minDwellMs: 900,
     },
 
     {
@@ -211,21 +340,29 @@ export function createCoreTransitions(): readonly Transition[] {
       to: 'Sleep',
       score: (ctx) => {
         const t = ctx.species.personality.temperament;
-        // 窗口 1500ms → 与 Sit→Walk（1150ms）落在**同一个决策点**（1500ms）。
-        // ★ 这是关键：若 Sleep 的触发时间落在 Walk 之后一个决策周期（2150ms），
-        //   那么 Walk 总会在 1500ms 先把它夺走，Sleep 实测占比恒为 0%。
-        //   必须让两者在同一个决策点竞争，靠**分值高低**决定，
-        //   而不是靠"谁先过线"。
+        // ★ Alpha 打磨：峰值从 72 提高到 190。
         //
-        //   在 1500ms 的决策点上：
-        //     Sit→Walk  效用 ≈ 49.6 × …  （受 energy 正向放大）
-        //     Sit→Sleep 效用 = 峰值 × patience(1.0) × tiredness^0.6 × 0.8
-        //   energy=0.5 时 Sleep ≈ 34.8 —— 低于 Walk，因此默认偏活动；
-        //   但当 energy 偏低（困倦的狗）Sleep 会反超，从而自然出现睡眠。
+        //   门槛统一到 scores 尺度后，Sit→Sleep 变得不可达：
+        //     Sleep 偏好份额 0.097（最低），
+        //     score = 0.097 × (1 + 38/30) = 0.220 < 0.30
+        //   而同一来源的 Sit→Idle 达 0.984 —— 差距 4.5 倍，Sleep 永远输。
+        //   实测：180 秒内 Sleep 占比 0%，狗从不睡觉。
+        //
+        //   为什么不能靠"降低门槛"解决：
+        //     门槛降低会让所有迁移一起更容易触发，Idle 占比反而更高。
+        //   正确做法是**提高 Sleep 自身的峰值**，让它在分数上能竞争。
+        //
+        //   新峰值 190 → score = 0.097 × (1 + 190/30) = 0.71
+        //   与 Sit→Idle 的 0.984 同量级 —— Sleep 有机会在"坐久了的决策点"胜出。
+        //
+        //   窗口保持 1500ms：坐下约 1.5 秒后开始犯困，节奏自然。
         const drowsiness = patience(ctx, 1500);
         const tiredness = 1 - t.energy;
-        return 72 * drowsiness * Math.pow(Math.max(0.1, tiredness), 0.6) * rhythmFactor(ctx);
+        return 190 * drowsiness * Math.pow(Math.max(0.1, tiredness), 0.6) * rhythmFactor(ctx);
       },
+      // 坐下至少 900ms 才可能睡着 —— 与 Sit→Walk 保持一致的下限，
+      // 保证"坐下"这个动作有时间被玩家看到。
+      minDwellMs: 900,
       cooldownMs: 30000,
     },
 
@@ -237,6 +374,8 @@ export function createCoreTransitions(): readonly Transition[] {
         const satEnough = patience(ctx, 5200);
         return 46 * satEnough * personalityFactor(t.energy, 0.8);
       },
+      // 坐下的最短时长同样适用于"站起来"这条兜底出口。
+      minDwellMs: 900,
     },
 
     // ───────────────────────────────────────────────

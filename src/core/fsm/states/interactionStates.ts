@@ -44,6 +44,25 @@ function playerPos(ctx: StateContext): { x: number; y: number } {
 }
 
 /**
+ * 把坐标夹进可行走区域（由 World 写入黑板的 walkableBounds）。
+ *
+ * 边界缺失时原样返回 —— 保证在没有 World 的单元测试里也能跑。
+ */
+function clampToWalkable(
+  bb: { [key: string]: unknown },
+  value: number,
+  axis: 'x' | 'y',
+): number {
+  const b = bb['walkableBounds'] as
+    | { minX: number; maxX: number; minY: number; maxY: number }
+    | undefined;
+  if (!b) return value;
+  return axis === 'x'
+    ? Math.min(b.maxX, Math.max(b.minX, value))
+    : Math.min(b.maxY, Math.max(b.minY, value));
+}
+
+/**
  * 转向玩家。返回当前朝向与目标的夹角（度）。
  *
  * 与 moveTowardsTarget 的区别：不移动，只转头。
@@ -409,8 +428,13 @@ export function createRetreatState(options: RetreatOptions = {}): State {
       const jitter = ctx.rng.range(-0.6, 0.6);
       const angle = awayAngle + jitter;
 
-      bb.wanderTargetX = bb.x + Math.cos(angle) * distancePx;
-      bb.wanderTargetY = bb.y + Math.sin(angle) * distancePx;
+      // ★ 必须夹进可行走区域。
+      //   Retreat 固定走 90px，若狗已经贴着墙，目标点必然落到墙外 ——
+      //   后果与 pickWanderTarget 的 bug 完全相同：
+      //   狗永远到不了目标，卡在 Retreat 里"生闷气"到天荒地老。
+      //   （Walk 状态曾因此卡死 162 秒，见 pickWanderTarget 的注释。）
+      bb.wanderTargetX = clampToWalkable(bb, bb.x + Math.cos(angle) * distancePx, 'x');
+      bb.wanderTargetY = clampToWalkable(bb, bb.y + Math.sin(angle) * distancePx, 'y');
       bb.hasWanderTarget = true;
       bb['retreatArrived'] = false;
       bb['retreatSulking'] = false;

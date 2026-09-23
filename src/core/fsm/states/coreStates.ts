@@ -63,14 +63,47 @@ function moveTowardsTarget(
   return false;
 }
 
-/** 在指定范围内选一个新的漫游目标点 */
+/**
+ * 在指定范围内选一个新的漫游目标点。
+ *
+ * ★ 目标点必须落在**可行走区域**内，否则会产生一个极隐蔽的死锁：
+ *
+ *   实测 bug（Alpha 打磨中发现）：
+ *     狗走到房间底边 y=182 后，被分到 y=191 的目标点 —— 已在墙外。
+ *     clampToBounds() 每帧把它推回 182，而 moveTowardsTarget 始终
+ *     到不了 191，于是 arrived 永远为 false，
+ *     WalkState 的「到达 → 驻足 → 完成」链条永远走不完，
+ *     准入守卫也就永远不放行。
+ *     结果：狗卡在 Walk 状态长达 162 秒（实测），永远不再切换。
+ *
+ *   这类 bug 的可怕之处在于：
+ *     它是**条件触发**的 —— 只有目标点恰好落在边界外时才发生，
+ *     表现为"偶尔卡死"，且状态机本身逻辑完全正确。
+ *
+ *   修复：选点时就把目标夹在可行走区域内（留出狗的半身宽高）。
+ */
 export function pickWanderTarget(ctx: StateContext, rng: Rng): void {
   const bb = ctx.blackboard;
   const radius = ctx.species.locomotion.idleWanderRadiusPx;
   const angle = rng.range(0, Math.PI * 2);
   const dist = rng.range(radius * 0.35, radius);
-  bb.wanderTargetX = bb.x + Math.cos(angle) * dist;
-  bb.wanderTargetY = bb.y + Math.sin(angle) * dist;
+
+  const rawX = bb.x + Math.cos(angle) * dist;
+  const rawY = bb.y + Math.sin(angle) * dist;
+
+  // 夹到可行走区域（由 World 提供的边界；缺省时退化为不夹取）
+  const bounds = bb['walkableBounds'] as
+    | { minX: number; maxX: number; minY: number; maxY: number }
+    | undefined;
+
+  if (bounds) {
+    bb.wanderTargetX = Math.min(bounds.maxX, Math.max(bounds.minX, rawX));
+    bb.wanderTargetY = Math.min(bounds.maxY, Math.max(bounds.minY, rawY));
+  } else {
+    bb.wanderTargetX = rawX;
+    bb.wanderTargetY = rawY;
+  }
+
   bb.hasWanderTarget = true;
 }
 

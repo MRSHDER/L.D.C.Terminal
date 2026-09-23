@@ -3,17 +3,17 @@
   "id": "graybox-shy",
 
   "stateWeights": {
-    "Idle": 44,
-    "Walk": 14,
-    "Sit": 26,
-    "Sleep": 16
+    "Idle": 34,
+    "Walk": 30,
+    "Sit": 22,
+    "Sleep": 14
   },
 
   "personalityBias": {
-    "Walk": { "energy": { "sensitivity": 1.2 } },
-    "Sit": { "shyness": { "sensitivity": 0.9 } },
+    "Walk": { "energy": { "sensitivity": 1.0 } },
+    "Sit": { "shyness": { "sensitivity": 0.7 } },
     "Sleep": { "energy": { "sensitivity": -1.3 } },
-    "Idle": { "shyness": { "sensitivity": 0.6 } }
+    "Idle": { "shyness": { "sensitivity": 0.4 } }
   },
 
   "interactionResponse": {},

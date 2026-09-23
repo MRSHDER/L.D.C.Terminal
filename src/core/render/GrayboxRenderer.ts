@@ -478,9 +478,20 @@ export class GrayboxRenderer {
     //     眨眼是瞬间的（~140ms），情绪闭眼是持续的（享受时一直闭着）。
     //     两者重叠时应该保持"闭着"，而不是叠加成负值。
     //   睡眠时强制全闭，忽略眨眼周期。
-    const closure = rs.pose.sleeping
+    const rawClosure = rs.pose.sleeping
       ? 1
       : Math.max(rs.procedural.eyeClosure, rs.pose.eyeClosure);
+
+    // ★ 阈值吸附：接近全闭时直接吸附到全闭。
+    //
+    //   为什么需要：像素风只有"睁眼"和"闭眼"两种表达，
+    //   中间态（eyeClosure 0.6~0.9）渲染出来是一条很短的横线，
+    //   既不像睁眼也不像闭眼，看起来像渲染错误。
+    //   实测：情绪闭眼稳定在 0.81 时，眼睛画成 1px 短线，
+    //   视觉上"一直没闭上"。
+    //
+    //   吸附到 0.9 以上即视为完全闭合，让表达干净利落。
+    const closure = rawClosure >= 0.9 ? 1 : rawClosure;
 
     const leftX = headX - eyeSpacing;
     const rightX = headX + eyeSpacing;

@@ -36,7 +36,7 @@ import { AnimationSystem, type RenderState } from '../animation/AnimationSystem'
 import type { ProceduralContext } from '../animation/ProceduralLayer';
 import { createRng, type Rng } from '../world/Rng';
 import type { SpeciesData, BehaviorsData } from '../data/types';
-import { resolveGrayboxSize } from '../data/defaults';
+import { resolveGrayboxSize, INTERACTION_STATE_IDS } from '../data/defaults';
 import { BondSystem } from '../affection/BondSystem';
 import { MoodSystem, type MoodModifiers } from '../affection/MoodSystem';
 import { InteractionSystem } from '../interaction/InteractionSystem';
@@ -88,6 +88,13 @@ export class World {
 
   /** 决策节流：只在 cognition.decisionIntervalMs 到点时才重算 */
   private decisionAccumMs = 0;
+  /**
+   * 下一次决策的阈值（ms），每次决策后重抽。
+   *
+   * 在 [0.65, 1.35] × decisionIntervalMs 内随机，**均值等于 decisionIntervalMs**。
+   * 目的：打散"决策发生在固定网格上"造成的机械感，详见 update() 中的说明。
+   */
+  private nextDecisionAtMs = 0;
   /** 反应延迟：感知到变化后的"愣一下" */
   private reactionDelayRemainingMs = 0;
 
@@ -145,7 +152,27 @@ export class World {
         ...createAdmissionGuards(),
         ...createInteractionAdmissionGuards(),
       },
-      minStateDurationMs: 200,
+      // ★ 响应态：这些状态是"对玩家的响应"，不走偏好份额。
+      //   详见 StateMachine.responseStates 与 RESPONSE_BASE_SCORE 的说明。
+      responseStates: INTERACTION_STATE_IDS,
+      // ★ 休止态：Idle 是"没别的事可做"的兜底态，不是"想做的事"。
+      //   不打折会让它永远自动达标，把狗高频拉回站立（实测占 61% 时间，
+      //   且导致 Sleep 永远不可达）。详见 REST_STATE_DISCOUNT。
+      restStateId: 'Idle',
+      // ★ 护栏时长与犬种节奏挂钩。
+      //
+      //   固定 200ms 对慢性子犬种没问题，但对敏捷犬种（决策间隔 180ms）
+      //   会形成"最小时长是决策间隔的 1.1 倍"的巧合，
+      //   使状态时长只能取 2 个决策刻度的整数倍 ——
+      //   实测 swift 的 Sit 每次恰好 367ms（标准差 0.000），
+      //   像节拍器一样精确，完全掩盖了随机相位的作用。
+      //
+      //   改为取决策间隔的 0.8 倍（最低 120ms），
+      //   让护栏不再是决策刻度的整数倍，从而释放时长变化空间。
+      minStateDurationMs: Math.max(
+        120,
+        Math.round(this.species.cognition.decisionIntervalMs * 0.8),
+      ),
       debug: options.debug ?? false,
     });
     // 常规行为 + 互动姿态
@@ -411,14 +438,34 @@ export class World {
     //   否则反应慢的犬种（决策间隔 900ms）会让玩家觉得"它没反应"，
     //   而抚摸是玩家最直接的输入，必须立刻被感知到。
     //   这体现"反应慢"与"不理我"的区别 —— 后者是 bug，不是性格。
+    //
+    // ★ Alpha 打磨：决策间隔本身随机化（保持均值不变）。
+    //
+    //   固定间隔会把所有状态时长钉在一个网格上（如 swift 的 267ms 倍数），
+    //   实测 Sit 每次恰好 1067ms、标准差 0.000 —— 精确得像节拍器。
+    //   根因不是行为逻辑，而是**决策时钟本身是等距的**：
+    //   既然只可能在 k×间隔 的时刻切换，时长就只能是间隔的整数倍。
+    //
+    //   动物的"思考"不是等距的心跳。让每次间隔在
+    //   [0.65×, 1.35×] 内随机（均值仍等于 decisionIntervalMs），
+    //   网格被打散，时长出现自然分布。
+    //
+    //   随机幅度同样... 不受性格控制 —— 这是**生理性抖动**，
+    //   不是性格表达。即便最"机械"的犬种，心跳也不是等距的。
     this.decisionAccumMs += dtMs;
     const urgent = this.blackboard['beingPetted'] === true || this.interaction.isPetting;
-    const canDecide =
-      urgent ||
-      (this.decisionAccumMs >= this.species.cognition.decisionIntervalMs &&
-        this.reactionDelayRemainingMs <= 0);
 
-    if (canDecide) this.decisionAccumMs = 0;
+    if (this.nextDecisionAtMs <= 0) {
+      this.nextDecisionAtMs = this.rollDecisionInterval();
+    }
+
+    const canDecide =
+      urgent || (this.decisionAccumMs >= this.nextDecisionAtMs && this.reactionDelayRemainingMs <= 0);
+
+    if (canDecide) {
+      this.decisionAccumMs = 0;
+      this.nextDecisionAtMs = this.rollDecisionInterval();
+    }
 
     // ── ③ 状态机更新（每帧一次，绝不重复调用）──
     //
@@ -430,7 +477,37 @@ export class World {
     const reactDelayOk = urgent || this.reactionDelayRemainingMs <= 0;
     const before = this.fsm.current;
     ctx.allowDecision = canDecide && reactDelayOk;
+
+    // ★ 一次决策，结果复用。
+    //
+    //   踩过的坑：早期版本先调 fsm.update()（内部会 decide() 一次），
+    //   再单独调 fsm.decide() 拿打分表发调试事件 ——
+    //   也就是**每个决策周期裁决两次**。
+    //
+    //   在引入活体噪声（随机抖动）之后，这个缺陷从"浪费"升级成"错误"：
+    //   第二次调用会再次消耗 RNG，于是调试面板看到的分数
+    //   与实际生效的决策并不一致 —— 面板说"它选了 Walk"，
+    //   而狗其实走了 Sit。排查行为问题时这会造成严重误导。
+    //
+    //   现在改为：先自行裁决拿到完整结果，再把它交给状态机执行。
+    //   决策与展示用同一份数据。
+    //
+    // ★ 顺序（Alpha 打磨修正）：
+    //     ① fsm.update(ctx)       —— 累加本帧时间、跑状态自身逻辑
+    //     ② fsm.decide(ctx)       —— 用**本帧已更新**的 stateElapsedMs 裁决
+    //     ③ fsm.applyDecision()   —— 执行裁决
+    //
+    //   早期写法把 ② 放在 ① 之前，导致裁决读到上一帧的停留时长，
+    //   使 minDwellMs 之类的下限判断整体滞后一帧（实测"设了 900ms
+    //   却在 250ms 就切走"）。
     this.fsm.update(ctx);
+    const decision = ctx.allowDecision ? this.fsm.decide(ctx) : null;
+
+    if (decision) {
+      this.blackboard['__lastDecision'] = decision;
+    }
+
+    this.fsm.applyDecision(ctx, decision);
     const after: StateId = this.fsm.current ?? 'Idle';
 
     if (before !== after) {
@@ -440,23 +517,24 @@ export class World {
     }
 
     // 发出完整打分表 —— 调试"为什么它这样动"的关键
-    if (canDecide) {
-      const decision = this.fsm.decide(ctx);
+    if (decision) {
       this.bus.emit('state:decision', {
         chosen: decision.chosen,
         scores: decision.scores,
         tick: this.tick,
       });
+    }
 
-      // ★ justPetted 脉冲必须在**被一次裁决消费之后**才清除。
-      //
-      //   踩过的坑：早期版本每帧无条件清除它。但抚摸发生在 update() 之外
-      //   （浏览器里是 pointer 回调，测试里是 harness 调用），
-      //   于是脉冲在下一帧就被抹掉，裁决可能根本没看到它 ——
-      //   表现是"摸了很多次，狗却一直停在最低级的 LookAt"。
-      //
-      //   正确做法：只在真正做过裁决的那一帧清除。
-      //   若决策被节流跳过，脉冲保留到下一次裁决，保证"摸了一定会被感知"。
+    // ★ justPetted 脉冲必须在**被一次裁决消费之后**才清除。
+    //
+    //   踩过的坑：早期版本每帧无条件清除它。但抚摸发生在 update() 之外
+    //   （浏览器里是 pointer 回调，测试里是 harness 调用），
+    //   于是脉冲在下一帧就被抹掉，裁决可能根本没看到它 ——
+    //   表现是"摸了很多次，狗却一直停在最低级的 LookAt"。
+    //
+    //   正确做法：只在真正做过裁决的那一帧清除。
+    //   若决策被节流跳过，脉冲保留到下一次裁决，保证"摸了一定会被感知"。
+    if (decision) {
       this.clearJustPettedPulse();
     }
 
@@ -649,19 +727,56 @@ export class World {
   private scheduleReaction(): void {
     const [lo, hi] = this.species.cognition.reactionDelayMs;
     this.reactionDelayRemainingMs = this.rng.range(lo, hi);
+    // 状态切换后重抽决策节拍，避免"切换时刻"与"决策时刻"锁相
+    this.nextDecisionAtMs = this.rollDecisionInterval();
   }
 
-  /** 把狗约束在可视范围内（含灰盒半宽/半高） */
+  /**
+   * 抽一次决策间隔。
+   *
+   * 在 [0.65, 1.35] × decisionIntervalMs 内均匀随机，均值 = decisionIntervalMs。
+   *
+   * ★ 这是"生理性抖动"，不是性格表达，因此**不受 randomness 维度控制**：
+   *   真实动物的注意力节律本就不是等距的，
+   *   即便训练最有素的狗，也不可能每隔恰好 500ms 思考一次。
+   *   若把它交给性格控制，等于允许"机械的狗"存在 —— 那不叫性格，叫 bug。
+   */
+  private rollDecisionInterval(): number {
+    const base = this.species.cognition.decisionIntervalMs;
+    return base * this.rng.range(0.65, 1.35);
+  }
+
+  /**
+   * 把狗约束在可视范围内（含灰盒半宽/半高）。
+   *
+   * ★ 同时把可行走区域写进黑板。
+   *
+   *   为什么必须公开这个区域：
+   *     pickWanderTarget() 需要知道"哪里能站"，
+   *     否则会选出墙外的目标点，导致狗永远走不到、卡死在 Walk 状态
+   *     （实测卡死 162 秒）。详见 pickWanderTarget 的注释。
+   *
+   *   把边界放在这里计算而不是让状态自己算，
+   *   保证"选点"与"夹取"用的是同一套边界 —— 两处各算一次必然漂移。
+   */
   private clampToBounds(): void {
     const size = resolveGrayboxSize(this.species);
     const halfW = size.w / 2;
     const halfH = size.h / 2;
     const bb = this.blackboard;
 
-    if (bb.x < halfW) bb.x = halfW;
-    if (bb.x > this.bounds.w - halfW) bb.x = this.bounds.w - halfW;
-    if (bb.y < halfH) bb.y = halfH;
-    if (bb.y > this.bounds.h - halfH) bb.y = this.bounds.h - halfH;
+    const minX = halfW;
+    const maxX = this.bounds.w - halfW;
+    const minY = halfH;
+    const maxY = this.bounds.h - halfH;
+
+    if (bb.x < minX) bb.x = minX;
+    if (bb.x > maxX) bb.x = maxX;
+    if (bb.y < minY) bb.y = minY;
+    if (bb.y > maxY) bb.y = maxY;
+
+    // 供 pickWanderTarget 使用的可行走区域
+    bb['walkableBounds'] = { minX, maxX, minY, maxY };
   }
 
   /** 把世界坐标与灰盒尺寸补进 RenderState（动画层不关心位置） */
