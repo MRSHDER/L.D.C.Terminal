@@ -1,43 +1,33 @@
 /**
  * L.D.C. — 调色板
  *
- * 视觉约束（来自设计文档）：
- *   - 黑白灰为主
- *   - 少量天蓝作为强调色
- *   - 低分辨率像素风（GBA / NDS / Pokémon GBA 参考）
- *
- * ★ 灰盒阶段也要遵守配色 —— 因为「灰盒决定最终观感」，
- *   如果灰盒随便用色，接入美术时会出现调性割裂。
+ * 灰盒阶段主体色跟伯恩山犬三色的黑 / 褐。
+ * 白色 blaze / bib / socks 由 coat.markings 驱动，渲染器接上后再画。
  */
 
 export const PALETTE = {
-  /** 背景：比纯黑略暖，避免 OLED 上的死黑 */
   bgDeep: 0x0e0e12,
   bgMid: 0x16161c,
   bgSoft: 0x1e1e26,
 
-  /** 网格线：低对比，只提供空间感 */
   grid: 0x26262f,
 
-  /** 灰盒主体：中灰，与背景拉开但保持克制 */
-  bodyFill: 0x6e6e7a,
-  bodyShade: 0x4a4a54,
-  bodyHighlight: 0x8e8e9a,
-  bodyOutline: 0x2a2a32,
+  /** 伯恩山底色：近黑暖棕 */
+  bodyFill: 0x1c1612,
+  bodyShade: 0x0e0c09,
+  bodyHighlight: 0x3a302c,
+  bodyOutline: 0x0a0906,
 
-  /** 头部略亮，形成层次 */
-  headFill: 0x82828e,
-  headShade: 0x5a5a66,
+  /** 头部用锈褐，侧视能读出三色 */
+  headFill: 0xb85a28,
+  headShade: 0x8a3616,
 
-  /** 眼睛：深色 */
-  eyeOpen: 0x14141a,
-  eyeClosed: 0x3a3a44,
+  eyeOpen: 0x2a2210,
+  eyeClosed: 0x0a0906,
 
-  /** ★ 强调色：天蓝。仅用于「值得注意」的元素 */
   accent: 0x6ec6f0,
   accentDim: 0x3d7fa3,
 
-  /** 文本 / UI */
   ink: 0xd8d8e0,
   inkDim: 0x7a7a88,
   ok: 0x7fd8a0,
@@ -45,7 +35,6 @@ export const PALETTE = {
   error: 0xe88a8a,
 } as const;
 
-/** 数字 → CSS hex 字符串 */
 export function toCss(color: number): string {
   return `#${color.toString(16).padStart(6, '0')}`;
 }
