@@ -1,0 +1,160 @@
+{
+  "$schema": "ldc/species/v1",
+  "version": "1.0.0",
+  "id": "bernese-mountain-dog",
+  "displayName": {
+    "zh": "伯恩山犬",
+    "en": "Bernese Mountain Dog"
+  },
+  "catalogNo": "LDC-004",
+  "description": {
+    "zh": "正式伯恩山犬数据条目。动作素材由 resources.sprites 声明；缺图时回退灰盒帧。",
+    "en": "Formal Bernese Mountain Dog entry. Clips declared on resources.sprites; missing files fall back to graybox frames."
+  },
+  "physical": {
+    "bodyScale": 1.08,
+    "hitbox": { "w": 64, "h": 56, "anchorY": 0.92 },
+    "grayboxTint": 16777215,
+    "silhouette": {
+      "bodyLength": 1.12,
+      "chestDepth": 0.66,
+      "legLength": 0.7,
+      "headForward": 0.66,
+      "headSize": 0.56,
+      "snoutLength": 0.46,
+      "earShape": "drop",
+      "earLength": 0.82,
+      "tailAttach": 0.14
+    },
+    "coat": {
+      "base": 1840658,
+      "shade": 920329,
+      "highlight": 3813932,
+      "outline": 657414,
+      "rust": 12076584,
+      "rustShade": 9059350,
+      "white": 15788242,
+      "whiteShade": 13944496,
+      "nose": 1712656,
+      "eye": 2763536,
+      "markings": {
+        "blaze": true,
+        "muzzle": true,
+        "bib": true,
+        "socks": true,
+        "rustPoints": true,
+        "tailTip": true
+      }
+    }
+  },
+  "personality": {
+    "temperament": {
+      "gentleness": 0.5,
+      "energy": 0.5,
+      "curiosity": 0.5,
+      "stubbornness": 0.5,
+      "shyness": 0.5,
+      "clinginess": 0.5,
+      "playfulness": 0.5,
+      "obedience": 0.5,
+      "randomness": 0.35
+    },
+    "traits": ["steady", "formal-sprite-pipeline"]
+  },
+  "cognition": {
+    "decisionIntervalMs": 500,
+    "reactionDelayMs": [200, 700],
+    "attentionSpanMs": 6000,
+    "memorySpanMs": 30000,
+    "learningRate": 0.15
+  },
+  "animation": {
+    "targetFps": 10,
+    "breath": { "freqHz": 0.22, "ampPx": 1.2, "bodyScaleY": 0.016 },
+    "blink": { "baseIntervalMs": 4200, "varianceMs": 2200, "durationMs": 140 },
+    "tail": { "segments": 3, "baseAngleDeg": 8, "maxSwingDeg": 18, "delayPerSegMs": 80 },
+    "ear": { "jitterDeg": 4, "triggerBias": 0.22 },
+    "float": { "ampPx": 0.8, "freqHz": 0.13 },
+    "transitions": {},
+    "defaultTransitionMs": 220
+  },
+  "needs": {
+    "hunger": { "decayPerMin": 0.9, "criticalAt": 0.85, "restorePerMin": 12 },
+    "energy": { "decayPerMin": 0.6, "criticalAt": 0.8, "restorePerMin": 6 },
+    "social": { "decayPerMin": 1.4, "criticalAt": 0.75, "restorePerMin": 8 }
+  },
+  "preferences": {
+    "food": { "base": 0.7, "favorites": [], "dislikes": [] },
+    "toys": { "ball": 0.5, "rope": 0.5, "squeaky": 0.5 },
+    "places": { "nearPlayer": 0.6, "sunnySpot": 0.5, "underTable": 0.4 },
+    "touch": { "head": 0.7, "back": 0.7, "belly": 0.5 }
+  },
+  "locomotion": {
+    "walkSpeedPx": 30,
+    "runSpeedPx": 65,
+    "turnRateDeg": 200,
+    "idleWanderRadiusPx": 48,
+    "wanderChancePerMin": 3,
+    "arriveThresholdPx": 3
+  },
+  "resources": {
+    "assetRoot": "/assets/species/bernese-mountain-dog/",
+    "animationClips": {},
+    "sprites": {
+      "format": "sheet-row",
+      "defaults": {
+        "frameWidth": 96,
+        "frameHeight": 64,
+        "anchor": [0.52, 0.92],
+        "baselineY": 60,
+        "facing": "right",
+        "loop": true
+      },
+      "clips": {
+        "idle": {
+          "src": "sprites/side-idle.png",
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        }
+      }
+    }
+  },
+  "affection": {
+    "bonding": {
+      "gainPerPet": 0.22,
+      "decayPerSec": 0.006,
+      "penaltyPerSecWhenAnnoyed": 0.05,
+      "requiresTouchToNotice": true,
+      "ladder": [
+        { "atBond": 0.0, "state": "LookAt", "label": { "zh": "看向玩家", "en": "Looks at you" } },
+        { "atBond": 0.32, "state": "Approach", "label": { "zh": "靠近一点", "en": "Comes closer" } },
+        { "atBond": 0.55, "state": "Sit", "label": { "zh": "坐到你旁边", "en": "Sits beside you" } },
+        { "atBond": 0.76, "state": "WagTail", "label": { "zh": "摇尾巴", "en": "Wags tail" } },
+        { "atBond": 0.93, "state": "PetEnjoy", "label": { "zh": "闭眼享受", "en": "Eyes closed, content" } }
+      ]
+    },
+    "petting": {
+      "minEffectiveMs": 90,
+      "pleasureBase": 0.35,
+      "arousalGain": 0.28,
+      "tolerance": 3
+    },
+    "annoyance": {
+      "windowMs": 3200,
+      "threshold": 7,
+      "annoyancePerExcess": 0.34,
+      "decayPerSec": 0.3,
+      "leaveAt": 0.78,
+      "sulkMs": 5200
+    }
+  },
+  "room": {
+    "floorLineRatio": 0.74,
+    "floorColor": 1973798,
+    "floorShadeColor": 1447452,
+    "wallColor": 1184280,
+    "showGrid": false,
+    "playerAnchor": { "xRatio": 0.5, "yRatio": 1.15 }
+  }
+}
