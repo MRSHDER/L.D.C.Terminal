@@ -127,6 +127,54 @@ export function TuningPanel({ snapshot, onPatch }: TuningPanelProps): React.JSX.
         hint="同时影响灰盒尺寸与命中框"
         onChange={(v) => onPatch({ physical: { bodyScale: v } })}
       />
+      <SliderRow
+        label="躯干长度"
+        path="physical.silhouette.bodyLength"
+        value={s.silhouette.bodyLength}
+        min={0.8}
+        max={1.8}
+        step={0.02}
+        hint="越大越扁长，越不像箱子"
+        onChange={(v) => onPatch({ physical: { silhouette: { bodyLength: v } } })}
+      />
+      <SliderRow
+        label="头探出"
+        path="physical.silhouette.headForward"
+        value={s.silhouette.headForward}
+        min={0.1}
+        max={1}
+        step={0.02}
+        hint="侧视关键：头在身体前方而不是正上方"
+        onChange={(v) => onPatch({ physical: { silhouette: { headForward: v } } })}
+      />
+      <SliderRow
+        label="吻长"
+        path="physical.silhouette.snoutLength"
+        value={s.silhouette.snoutLength}
+        min={0}
+        max={1}
+        step={0.02}
+        hint="0 = 没吻"
+        onChange={(v) => onPatch({ physical: { silhouette: { snoutLength: v } } })}
+      />
+      <SliderRow
+        label="腿长"
+        path="physical.silhouette.legLength"
+        value={s.silhouette.legLength}
+        min={0.2}
+        max={0.8}
+        step={0.02}
+        onChange={(v) => onPatch({ physical: { silhouette: { legLength: v } } })}
+      />
+      <SliderRow
+        label="耳长"
+        path="physical.silhouette.earLength"
+        value={s.silhouette.earLength}
+        min={0.2}
+        max={0.9}
+        step={0.02}
+        onChange={(v) => onPatch({ physical: { silhouette: { earLength: v } } })}
+      />
 
       <p className="ldc-panel__foot">
         <code>↺ 还原 JSON</code> 可丢弃全部改动，回到磁盘上的原始数据。
