@@ -13,7 +13,6 @@
     "displayName": { "$ref": "#/definitions/localizedText" },
     "catalogNo": { "type": "string", "pattern": "^LDC-\\d{3}$" },
     "description": { "$ref": "#/definitions/localizedText" },
-
     "physical": {
       "type": "object",
       "required": ["bodyScale", "hitbox"],
@@ -28,6 +27,21 @@
             "w": { "type": "number", "exclusiveMinimum": 0 },
             "h": { "type": "number", "exclusiveMinimum": 0 },
             "anchorY": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.85 }
+          }
+        },
+        "silhouette": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "bodyLength": { "type": "number", "minimum": 0.6, "maximum": 2.4 },
+            "chestDepth": { "type": "number", "minimum": 0.35, "maximum": 1.2 },
+            "legLength": { "type": "number", "minimum": 0.15, "maximum": 1.1 },
+            "headForward": { "type": "number", "minimum": 0, "maximum": 1.2 },
+            "headSize": { "type": "number", "minimum": 0.25, "maximum": 1 },
+            "snoutLength": { "type": "number", "minimum": 0, "maximum": 1.2 },
+            "earShape": { "type": "string", "enum": ["prick", "drop", "fold"] },
+            "earLength": { "type": "number", "minimum": 0.15, "maximum": 1.2 },
+            "tailAttach": { "type": "number", "minimum": 0, "maximum": 1 }
           }
         },
         "pettingHotspots": {
@@ -56,7 +70,6 @@
         "grayboxTint": { "type": "integer", "minimum": 0, "maximum": 16777215, "default": 16777215 }
       }
     },
-
     "personality": {
       "type": "object",
       "required": ["temperament"],
@@ -81,7 +94,6 @@
         "traits": { "type": "array", "items": { "type": "string" }, "default": [] }
       }
     },
-
     "cognition": {
       "type": "object",
       "required": ["decisionIntervalMs", "reactionDelayMs"],
@@ -94,7 +106,6 @@
         "learningRate": { "$ref": "#/definitions/unit" }
       }
     },
-
     "animation": {
       "type": "object",
       "required": ["targetFps"],
@@ -153,7 +164,6 @@
         "defaultTransitionMs": { "type": "number", "minimum": 0, "default": 200 }
       }
     },
-
     "needs": {
       "type": "object",
       "additionalProperties": false,
@@ -163,7 +173,6 @@
         "social": { "$ref": "#/definitions/needConfig" }
       }
     },
-
     "preferences": {
       "type": "object",
       "additionalProperties": false,
@@ -182,7 +191,6 @@
         "touch": { "$ref": "#/definitions/unitMap" }
       }
     },
-
     "locomotion": {
       "type": "object",
       "required": ["walkSpeedPx"],
@@ -196,7 +204,6 @@
         "arriveThresholdPx": { "type": "number", "minimum": 0 }
       }
     },
-
     "resources": {
       "type": "object",
       "additionalProperties": false,
@@ -206,7 +213,6 @@
         "audio": { "type": "object", "additionalProperties": { "type": "string" } }
       }
     },
-
     "affection": {
       "type": "object",
       "description": "Milestone 2：亲昵、抚摸与骚扰反应。missing 时整套继承引擎默认值。",
@@ -260,7 +266,6 @@
         }
       }
     },
-
     "room": {
       "type": "object",
       "description": "Milestone 2：房间外观。本阶段只有一个房间，无 UI。",
@@ -282,7 +287,6 @@
       }
     }
   },
-
   "definitions": {
     "unit": { "type": "number", "minimum": 0, "maximum": 1 },
     "range": {
