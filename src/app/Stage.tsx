@@ -25,6 +25,8 @@ import './InteractionObjects.css';
 
 const DESIGN_W = 320;
 const DESIGN_H = 200;
+const HUNGER_DECAY_PER_MIN = 0.9;
+const HUNGER_RESTORE = 0.4;
 
 const PADDING_TOP_PERCENT = 62.5;
 if (import.meta.env.DEV) {
@@ -49,12 +51,14 @@ export function Stage(): React.JSX.Element {
   const frameRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragSession | null>(null);
   const prevBondRef = useRef(snapshot.bond);
+  const hungerRef = useRef(0.22);
   const [objects, setObjects] = useState<readonly InteractionObjectState[]>(() => createInteractionObjects());
   const [lastIntent, setLastIntent] = useState<DropIntentResult | null>(null);
   const [immerse, setImmerse] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [selected, setSelected] = useState<DockItemId>('pet');
   const [toastToken, setToastToken] = useState(0);
+  const [hunger, setHunger] = useState(0.22);
 
   const debugVisible =
     typeof window !== 'undefined' &&
@@ -68,6 +72,14 @@ export function Stage(): React.JSX.Element {
     if (snapshot.bond > prevBondRef.current + 0.01) setToastToken((n) => n + 1);
     prevBondRef.current = snapshot.bond;
   }, [snapshot.bond]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      hungerRef.current = Math.min(1, hungerRef.current + HUNGER_DECAY_PER_MIN * (0.25 / 60));
+      setHunger(hungerRef.current);
+    }, 250);
+    return () => window.clearInterval(id);
+  }, []);
 
   const toWorldPoint = (ev: React.PointerEvent): { x: number; y: number } => {
     const rect = frameRef.current?.getBoundingClientRect();
@@ -151,7 +163,10 @@ export function Stage(): React.JSX.Element {
     };
     const result = intentForDrop(obj, resolveDropTarget(at, createDropZones(snapshot.position, objects)), at);
     setLastIntent(result);
-    engine.applyIntent(result.intent);
+    if (result.intent === 'FEED_HAND' || result.intent === 'FEED_BOWL' || result.intent === 'FEED_GROUND') {
+      hungerRef.current = Math.max(0, hungerRef.current - HUNGER_RESTORE);
+      setHunger(hungerRef.current);
+    }
     resetObject(obj.id);
   };
 
@@ -226,8 +241,8 @@ export function Stage(): React.JSX.Element {
           displayName={snapshot.displayName}
           bond={snapshot.bond}
           energy={snapshot.energy}
-          hunger={snapshot.hunger}
-          hudHot={snapshot.beingPetted || snapshot.currentState !== 'Idle'}
+          hunger={hunger}
+          hudHot={snapshot.beingPetted || snapshot.currentState !== 'Idle' || hunger > 0.72}
           toastToken={toastToken}
           immerse={immerse}
           selected={selected}
