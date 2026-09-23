@@ -1,16 +1,5 @@
 /**
  * L.D.C. — 引擎默认值（DEFAULT_SPECIES / DEFAULT_BEHAVIORS）
- *
- * ★ 这是「新犬种 JSON 可以很短」的原因。
- *
- * 加载管线：
- *   DEFAULT_SPECIES  →  深合并  →  species.json  →  校验  →  冻结
- *
- * 新犬种只需写「与默认不同」的字段。
- * 伯恩山的 species.json 因此可以控制在 80 行左右。
- *
- * 注意：这里的数值是「中性犬」—— 不偏向任何犬种。
- * 任何看起来像具体犬种默认值的数字都是设计错误。
  */
 
 import type {
@@ -34,13 +23,6 @@ import type {
 } from './types';
 import { SPECIES_SCHEMA_VERSION, BEHAVIORS_SCHEMA_VERSION } from './types';
 
-/**
- * 中性基准体型：灰盒方块尺寸（世界像素）。
- *
- * 比例刻意取"宽 > 高"（48×36，约 4:3）——
- * 这是侧视犬类躯干的粗略轮廓。若改成正方或竖长，
- * 灰盒会被读成"箱子"而不是"动物"，不利于验证姿态动画。
- */
 export const GRAYBOX_BASE_SIZE = { w: 48, h: 36 } as const;
 
 const DEFAULT_TEMPERAMENT: Temperament = {
@@ -56,15 +38,15 @@ const DEFAULT_TEMPERAMENT: Temperament = {
 };
 
 const DEFAULT_SILHOUETTE: SilhouetteConfig = {
-  bodyLength: 1.32,
-  chestDepth: 0.72,
-  legLength: 0.42,
-  headForward: 0.58,
-  headSize: 0.5,
-  snoutLength: 0.42,
+  bodyLength: 1.08,
+  chestDepth: 0.58,
+  legLength: 0.78,
+  headForward: 0.7,
+  headSize: 0.48,
+  snoutLength: 0.55,
   earShape: 'prick',
-  earLength: 0.48,
-  tailAttach: 0.08,
+  earLength: 0.62,
+  tailAttach: 0.1,
 };
 
 const DEFAULT_PHYSICAL: PhysicalConfig = {
@@ -131,31 +113,11 @@ const DEFAULT_BONDING: BondingConfig = {
   decayPerSec: 0.006,
   penaltyPerSecWhenAnnoyed: 0.05,
   ladder: [
-    {
-      atBond: 0.0,
-      state: 'LookAt',
-      label: { zh: '看向玩家', en: 'Looks at you' },
-    },
-    {
-      atBond: 0.32,
-      state: 'Approach',
-      label: { zh: '靠近一点', en: 'Comes closer' },
-    },
-    {
-      atBond: 0.55,
-      state: 'Sit',
-      label: { zh: '坐到你旁边', en: 'Sits beside you' },
-    },
-    {
-      atBond: 0.76,
-      state: 'WagTail',
-      label: { zh: '摇尾巴', en: 'Wags tail' },
-    },
-    {
-      atBond: 0.93,
-      state: 'PetEnjoy',
-      label: { zh: '闭眼享受', en: 'Closes eyes, content' },
-    },
+    { atBond: 0.0, state: 'LookAt', label: { zh: '看向玩家', en: 'Looks at you' } },
+    { atBond: 0.32, state: 'Approach', label: { zh: '靠近一点', en: 'Comes closer' } },
+    { atBond: 0.55, state: 'Sit', label: { zh: '坐到你旁边', en: 'Sits beside you' } },
+    { atBond: 0.76, state: 'WagTail', label: { zh: '摇尾巴', en: 'Wags tail' } },
+    { atBond: 0.93, state: 'PetEnjoy', label: { zh: '闭眼享受', en: 'Closes eyes, content' } },
   ],
   requiresTouchToNotice: true,
 };
@@ -251,20 +213,11 @@ export const DEFAULT_BEHAVIORS: BehaviorsData = {
   microBehaviors: [],
   extraRandomness: 0,
   pettingResponse: {
-    weights: {
-      accept: 62,
-      leanIn: 18,
-      lookUp: 14,
-      pullAway: 6,
-    },
+    weights: { accept: 62, leanIn: 18, lookUp: 14, pullAway: 6 },
     cooldownMs: 0,
   },
   annoyanceResponse: {
-    weights: {
-      turnHeadAway: 48,
-      standUp: 30,
-      walkAway: 22,
-    },
+    weights: { turnHeadAway: 48, standUp: 30, walkAway: 22 },
     cooldownMs: 0,
   },
   annoyanceBias: {
@@ -293,30 +246,30 @@ export interface ResolvedSilhouette {
 export function resolveSilhouette(species: SpeciesData): ResolvedSilhouette {
   const scale = species.physical.bodyScale;
   const sil = species.physical.silhouette;
-  const torsoW = Math.max(12, Math.round(GRAYBOX_BASE_SIZE.w * scale * sil.bodyLength));
-  const torsoH = Math.max(8, Math.round(GRAYBOX_BASE_SIZE.h * scale * sil.chestDepth));
-  const headW = Math.max(8, Math.round(torsoW * sil.headSize * 0.52));
-  const headH = Math.max(8, Math.round(torsoH * sil.headSize * 1.05));
-  const snoutW = Math.max(0, Math.round(headW * sil.snoutLength));
-  const snoutH = Math.max(3, Math.round(headH * 0.36));
-  const earH = Math.max(3, Math.round(headH * sil.earLength));
-  const earW = Math.max(2, Math.round(headW * (sil.earShape === 'drop' ? 0.3 : 0.22)));
-  const legH = Math.max(3, Math.round(torsoH * sil.legLength));
-  const legW = Math.max(2, Math.round(torsoW * 0.1));
+  const torsoW = Math.max(16, Math.round(GRAYBOX_BASE_SIZE.w * scale * sil.bodyLength));
+  const torsoH = Math.max(10, Math.round(GRAYBOX_BASE_SIZE.h * scale * sil.chestDepth));
+  const headW = Math.max(10, Math.round(GRAYBOX_BASE_SIZE.w * scale * sil.headSize * 0.72));
+  const headH = Math.max(10, Math.round(GRAYBOX_BASE_SIZE.h * scale * sil.headSize * 0.78));
+  const snoutW = Math.max(0, Math.round(headW * sil.snoutLength * 0.7));
+  const snoutH = Math.max(4, Math.round(headH * 0.4));
+  const earH = Math.max(4, Math.round(headH * sil.earLength));
+  const earW = Math.max(3, Math.round(headW * (sil.earShape === 'drop' ? 0.32 : 0.22)));
+  const legH = Math.max(8, Math.round(GRAYBOX_BASE_SIZE.h * scale * sil.legLength * 0.72));
+  const legW = Math.max(3, Math.round(Math.max(torsoW * 0.07, 3)));
   return {
     torsoW,
     torsoH,
     legW,
     legH,
-    legGap: Math.round(torsoW * 0.28),
+    legGap: Math.round(torsoW * 0.22),
     headW,
     headH,
     snoutW,
     snoutH,
     earW,
     earH,
-    headForwardPx: Math.round(torsoW * sil.headForward * 0.5),
-    tailAttachPx: Math.round(torsoW * (0.42 - sil.tailAttach * 0.18)),
+    headForwardPx: Math.round(torsoW * 0.5 - headW * 0.28 + torsoW * (sil.headForward - 0.5) * 0.25),
+    tailAttachPx: Math.round(torsoW * (0.48 - sil.tailAttach * 0.12)),
     earShape: sil.earShape,
   };
 }
@@ -324,7 +277,7 @@ export function resolveSilhouette(species: SpeciesData): ResolvedSilhouette {
 export function resolveGrayboxSize(species: SpeciesData): { w: number; h: number } {
   const g = resolveSilhouette(species);
   return {
-    w: Math.max(8, g.torsoW + Math.round(g.headW * 0.35) + g.snoutW),
-    h: Math.max(8, g.torsoH + Math.round(g.legH * 0.7)),
+    w: Math.max(8, g.torsoW + Math.round(g.headW * 0.55) + g.snoutW),
+    h: Math.max(8, g.torsoH + g.legH),
   };
 }
