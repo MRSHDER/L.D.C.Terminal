@@ -18,8 +18,9 @@
     "sim": "tsx tools/simulate.ts",
     "tune": "tsx tools/tune-transitions.ts",
     "pet": "tsx tools/pet-test.ts",
+    "pointer:test": "tsx tools/pointer-test.ts",
     "calibrate": "tsx tools/calibrate-annoyance.ts",
-    "verify": "npm run species:validate && npm run build"
+    "verify": "npm run species:validate && npm run pointer:test && npm run build"
   },
   "dependencies": {
     "pixi.js": "^8.6.6",

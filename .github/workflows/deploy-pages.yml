@@ -71,6 +71,20 @@ jobs:
       - name: Annoyance calibration
         run: npm run calibrate
 
+      # ★ 指针边界回归 —— 这一步的来历值得写清楚。
+      #
+      #   曾经有一个 bug 让线上整站交互完全失效：玩家怎么点狗都没反应。
+      #   根因是 PointerAdapter 把屏幕坐标乘以了设计宽度而不是按比例缩小。
+      #
+      #   上面那些测试全都没拦住它，因为它们直接把**世界坐标**喂给 World，
+      #   绕过了"屏幕像素 → 世界坐标"这段换算。
+      #   这个盲区让一个致命 bug 一路通过所有检查并部署上线。
+      #
+      #   这一步专门覆盖那段边界，且已反向验证过：
+      #   把旧 bug 放回去，它会掉到 9/17 并以非零退出。
+      - name: Pointer boundary regression
+        run: npm run pointer:test
+
       - name: Build
         run: npm run build -- --base=/L.D.C.Terminal/
 

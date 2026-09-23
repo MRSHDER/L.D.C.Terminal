@@ -244,11 +244,27 @@ export function useEngine(designWidth: number, designHeight: number): UseEngineR
       });
     };
 
-    // ── 开发期调试入口 ──
-    // 把引擎内部暴露到 window.__LDC__，便于在浏览器控制台/自动化中
-    // 检查场景图、RenderState 与渲染调用次数。
-    // 生产构建会被 Vite 的 dead-code 消除移除。
-    if (import.meta.env.DEV) {
+    // ── 调试入口 ──
+    //
+    // 把引擎内部暴露到 window.__LDC__，便于在浏览器控制台 / 自动化脚本中
+    // 检查场景图、RenderState、互动状态与渲染调用。
+    //
+    // ★ 暴露条件（Alpha 部署阶段修正）：
+    //   原实现只在 import.meta.env.DEV 时暴露 ——
+    //   于是在**线上环境**（唯一真实用户体验的地方）完全无法诊断。
+    //   排查"点击没反应"时只能靠猜，效率极低。
+    //
+    //   现在改为：DEV 环境 或 URL 带 ?debug=1 时都暴露。
+    //   ?debug=1 同时控制调试面板的显示，
+    //   因此"打开调试模式"这件事在本地和线上行为一致。
+    //
+    //   生产环境的普通访客（不带 ?debug=1）不会看到 __LDC__，
+    //   打包体积与安全性不受影响。
+    const debugRequested =
+      typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).get('debug') === '1';
+
+    if (import.meta.env.DEV || debugRequested) {
       (window as unknown as Record<string, unknown>)['__LDC__'] = {
         get world() {
           return world;
@@ -268,6 +284,18 @@ export function useEngine(designWidth: number, designHeight: number): UseEngineR
         /** 羁绊 / 情绪快照 */
         bond: () => world.bondSnapshot,
         mood: () => world.moodSnapshot,
+        /** 狗的当前世界坐标与命中区域 —— 排查"点了没反应"的关键 */
+        dogInfo: () => {
+          const bb = world.blackboard;
+          const rs = world.getRenderState();
+          return {
+            world: { x: Math.round(bb.x), y: Math.round(bb.y) },
+            size: { w: rs.w, h: rs.h },
+            state: world.currentState,
+            moving: bb.moving,
+            hitPaddingPx: 12,
+          };
+        },
       };
     }
 

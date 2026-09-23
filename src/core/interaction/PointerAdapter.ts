@@ -56,9 +56,9 @@ export class PointerAdapter {
   private readonly callbacks: PointerAdapterCallbacks;
   private readonly primaryOnly: boolean;
 
-  /** 设计分辨率：CSS 像素 → 世界像素 的换算目标 */
-  private designW = 1;
-  private designH = 1;
+  /** 设计分辨率（画布的逻辑尺寸，灰盒为 320×200）。缩放比在每次采样时现算 */
+  private designW = 320;
+  private designH = 200;
 
   private disposed = false;
 
@@ -157,20 +157,47 @@ export class PointerAdapter {
   }
 
   /**
-   * 把客户端坐标换算为画布世界坐标。
+   * 把客户端坐标换算为画布世界坐标（设计分辨率下的逻辑坐标）。
    *
-   * 注意画布是 320×200 的固定设计分辨率，通过 CSS 放大显示，
-   * 因此必须按元素实际尺寸缩放，否则点击位置会偏移。
+   * ★★★ 这里曾经有一个让整个交互完全失效的 bug ★★★
+   *
+   * 画布是 320×200 的固定设计分辨率，通过 CSS 拉伸铺满视口。
+   * 因此换算必须是「屏幕像素 → 逻辑像素」的**缩小**：
+   *
+   *     logicalX = (clientX - rect.left) / rect.width  * designWidth
+   *
+   * 而旧实现写的是：
+   *
+   *     logicalX = (clientX - rect.left) * this.scaleX
+   *
+   * 其中 scaleX 被 setDesignSize() 直接赋成了 designWidth（320）。
+   * 于是屏幕坐标被**乘以 320** 而不是按比例缩小 ——
+   * 实测点击狗身上时换算出 x = 103540（正确值应为 124），
+   * 命中判定必然失败，表现为：**怎么点都没有任何反应**。
+   *
+   * 为什么之前没被发现：
+   *   无头测试（tools/pet-test.ts）直接调 World.pointerDown 传入世界坐标，
+   *   完全绕过了这一层；浏览器测试又在 DEV 环境下用旧 DOM 结构，
+   *   且我当时的验证是"狗在动"而非"点中了"。
+   *   这是典型的**测试覆盖盲区**：被测的是逻辑，出问题的是边界换算。
+   *
+   * 现在的实现不依赖外部传入的"设计尺寸"，而是每次按下时
+   * 用元素实际尺寸现算缩放比 —— 这样即使画布被 CSS 拉伸、
+   * 旋转或处于不同 DPR 下，换算依然正确。
    */
   private toSample(e: PointerEvent): PointerSample {
     const rect = this.element.getBoundingClientRect();
-    const scaleX = rect.width > 0 ? this.designW / rect.width : 1;
-    const scaleY = rect.height > 0 ? this.designH / rect.height : 1;
+
+    // 屏幕像素 → 设计分辨率下的逻辑坐标
+    const sx = rect.width > 0 ? this.designW / rect.width : 1;
+    const sy = rect.height > 0 ? this.designH / rect.height : 1;
+
     const type: PointerSample['pointerType'] =
       e.pointerType === 'touch' ? 'touch' : e.pointerType === 'pen' ? 'pen' : 'mouse';
+
     return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY,
+      x: (e.clientX - rect.left) * sx,
+      y: (e.clientY - rect.top) * sy,
       atMs: performance.now(),
       pointerId: e.pointerId,
       isPrimary: e.isPrimary,
@@ -178,7 +205,12 @@ export class PointerAdapter {
     };
   }
 
-  /** 告知设计分辨率，用于坐标换算 */
+  /**
+   * 告知设计分辨率（画布的逻辑尺寸，灰盒为 320×200）。
+   *
+   * 注意这里存的是**尺寸**而不是缩放比 ——
+   * 真正的缩放比在 toSample() 中按元素当前实际尺寸现算。
+   */
   setDesignSize(designW: number, designH: number): void {
     this.designW = Math.max(1, designW);
     this.designH = Math.max(1, designH);

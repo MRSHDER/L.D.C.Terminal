@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2023"],
+    // ★ 需要 DOM：tools/ 下的验证脚本会 import 生产代码（如 PointerAdapter），
+    //   而 PointerAdapter 本来就面向浏览器，用到了 HTMLElement / PointerEvent。
+    //   加上 DOM 只是让 Node 侧的脚本能对这份代码做类型检查，
+    //   不代表这些脚本自己会去碰 DOM（真碰了运行时立刻就会报错）。
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
 
