@@ -1,8 +1,5 @@
 /**
  * L.D.C. — 物体交互语义（Milestone 3 foundation）
- *
- * 本文件只做一件事：把「玩家把什么东西放到哪里」翻译成 intent。
- * 它不决定狗怎么回应，也不包含任何犬种分支。
  */
 
 import type { IntentKind } from '../event/events';
@@ -47,23 +44,23 @@ export const DEFAULT_INTERACTION_OBJECTS: readonly InteractionObjectDefinition[]
     kind: 'food',
     label: 'MEAT',
     color: 0xb43028,
-    home: { x: 38, y: 170 },
-    size: { w: 24, h: 16 },
+    home: { x: 40, y: 168 },
+    size: { w: 28, h: 18 },
   },
   {
     id: 'water',
     kind: 'drink',
     label: 'WATER',
     color: 0x2f7fc4,
-    home: { x: 70, y: 170 },
-    size: { w: 24, h: 16 },
+    home: { x: 74, y: 168 },
+    size: { w: 24, h: 19 },
   },
   {
     id: 'ball',
     kind: 'toy',
     label: 'BALL',
     color: 0x6fd24a,
-    home: { x: 102, y: 170 },
+    home: { x: 106, y: 168 },
     size: { w: 18, h: 18 },
   },
   {
@@ -71,8 +68,8 @@ export const DEFAULT_INTERACTION_OBJECTS: readonly InteractionObjectDefinition[]
     kind: 'container',
     label: 'BOWL',
     color: 0xe2d3b0,
-    home: { x: 272, y: 170 },
-    size: { w: 28, h: 16 },
+    home: { x: 270, y: 168 },
+    size: { w: 28, h: 21 },
   },
 ];
 
