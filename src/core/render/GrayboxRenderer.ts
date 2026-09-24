@@ -32,7 +32,7 @@ export interface GrayboxRendererOptions {
 
 const WALK_CLIPS = new Set(['Walk', 'Approach', 'Retreat']);
 const RUN_CLIPS = new Set(['Run']);
-const IDLE_CLIPS = new Set(['Idle', 'LookAt']);
+const IDLE_CLIPS = new Set(['Idle', 'LookAt', 'Sit', 'Sleep', 'PetEnjoy', 'WagTail', 'HeadLow', 'LowHead', 'Sniff', 'Eat', 'Eating', 'Drink', 'Drinking']);
 const DEFAULT_SCALE = 0.96;
 
 type DogTextureMap = Readonly<Record<DogAnimationId, readonly Texture[]>>;
@@ -263,4 +263,5 @@ export class GrayboxRenderer {
     return this.app.ticker;
   }
 }
+
 
