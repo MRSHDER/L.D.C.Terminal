@@ -32,11 +32,6 @@ export interface GrayboxRendererOptions {
 
 const WALK_CLIPS = new Set(['Walk', 'Approach', 'Retreat']);
 const RUN_CLIPS = new Set(['Run']);
-const SIT_CLIPS = new Set(['Sit', 'PetEnjoy', 'Sleep']);
-const HEAD_LOW_CLIPS = new Set(['HeadLow', 'LowHead', 'Sniff']);
-const WAG_TAIL_CLIPS = new Set(['WagTail']);
-const EAT_CLIPS = new Set(['Eat', 'Eating']);
-const DRINK_CLIPS = new Set(['Drink', 'Drinking']);
 const IDLE_CLIPS = new Set(['Idle', 'LookAt']);
 const DEFAULT_SCALE = 0.96;
 
@@ -75,11 +70,6 @@ async function loadDogTextures(): Promise<DogTextureMap> {
 function animationForRenderState(rs: RenderState): DogAnimationId {
   if (RUN_CLIPS.has(rs.clipId)) return 'run';
   if (WALK_CLIPS.has(rs.clipId)) return rs.speedRatio > 0.72 ? 'run' : 'walk';
-  if (SIT_CLIPS.has(rs.clipId)) return 'sit';
-  if (HEAD_LOW_CLIPS.has(rs.clipId)) return 'headLow';
-  if (WAG_TAIL_CLIPS.has(rs.clipId)) return 'wagTail';
-  if (EAT_CLIPS.has(rs.clipId)) return 'eat';
-  if (DRINK_CLIPS.has(rs.clipId)) return 'drink';
   if (rs.moving) return rs.speedRatio > 0.72 ? 'run' : 'walk';
   return 'idle';
 }
