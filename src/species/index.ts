@@ -42,5 +42,5 @@ export const SPECIES_SOURCES: readonly SpeciesSource[] = [
   },
 ];
 
-/** 默认犬种仍是 graybox；伯恩山先注册不切默认。 */
-export const DEFAULT_SPECIES_ID = SPECIES_SOURCES[0]!.id;
+/** 默认犬种使用伯恩山；graybox 仍保留为回归基线犬种。 */
+export const DEFAULT_SPECIES_ID = 'bernese-mountain-dog';
