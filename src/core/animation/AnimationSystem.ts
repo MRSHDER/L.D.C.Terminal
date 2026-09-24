@@ -115,9 +115,8 @@ const POSE_BY_STATE: Readonly<Record<string, PoseTarget>> = {
   // ── 常规行为 ──
   Idle: { bodyHeightRatio: 1, headDropPx: 0, sleeping: false },
   Walk: { bodyHeightRatio: 0.97, headDropPx: 0, sleeping: false },
-  Run: { bodyHeightRatio: 0.95, headDropPx: 0, sleeping: false },
-  Sit: { bodyHeightRatio: 0.72, headDropPx: 4, sleeping: false },
-  Sleep: { bodyHeightRatio: 0.58, headDropPx: 12, sleeping: true },
+  Sit: { bodyHeightRatio: 1, headDropPx: 0, sleeping: false },
+  Sleep: { bodyHeightRatio: 1, headDropPx: 0, sleeping: false },
 
   // ── Milestone 2 互动姿态 ──
   // 看向玩家：站直、头抬起（headDropPx 为负 = 抬头）
@@ -125,12 +124,7 @@ const POSE_BY_STATE: Readonly<Record<string, PoseTarget>> = {
   // 靠近：走动姿态
   Approach: { bodyHeightRatio: 0.97, headDropPx: 0, sleeping: false },
   // 摇尾巴：站直且抬头，配合情绪层拉高的 arousal → 尾巴自动摆得欢
-  WagTail: { bodyHeightRatio: 1.0, headDropPx: -4, sleeping: false },
-  HeadLow: { bodyHeightRatio: 0.92, headDropPx: 10, sleeping: false },
-  LowHead: { bodyHeightRatio: 0.92, headDropPx: 10, sleeping: false },
-  Sniff: { bodyHeightRatio: 0.92, headDropPx: 10, sleeping: false },
-  Eat: { bodyHeightRatio: 0.9, headDropPx: 12, sleeping: false },
-  Drink: { bodyHeightRatio: 0.9, headDropPx: 12, sleeping: false },
+  WagTail: { bodyHeightRatio: 1.0, headDropPx: 0, sleeping: false },
   // 闭眼享受：坐下 + 头微垂（放松）。
   // ★ 目标值取 1.0 而非 0.85。
   //   姿态插值是指数逼近（每帧向目标靠近一部分），
@@ -138,7 +132,7 @@ const POSE_BY_STATE: Readonly<Record<string, PoseTarget>> = {
   //   插值会渐近逼近但永远达不到 —— 实测眼睛稳定在 0.81，
   //   视觉上一直停在"半闭"，玩家看不到明确的"闭上眼睛"。
   //   取 1.0 让插值有明确目标，约 600ms 后稳定在全闭状态。
-  PetEnjoy: { bodyHeightRatio: 0.7, headDropPx: 8, sleeping: false, eyeClosure: 1.0 },
+  PetEnjoy: { bodyHeightRatio: 1, headDropPx: 0, sleeping: false, eyeClosure: 0 },
   // 烦躁：站直、头略偏（回避感）
   Annoyed: { bodyHeightRatio: 1.0, headDropPx: 2, sleeping: false },
   // 走开：走动姿态
@@ -207,17 +201,11 @@ export class AnimationSystem {
     for (const stateId of [
       'Idle',
       'Walk',
-      'Run',
       'Sit',
       'Sleep',
       'LookAt',
       'Approach',
       'WagTail',
-      'HeadLow',
-      'LowHead',
-      'Sniff',
-      'Eat',
-      'Drink',
       'PetEnjoy',
       'Annoyed',
       'Retreat',
@@ -295,8 +283,7 @@ export class AnimationSystem {
     // ── ② 像素帧推进（低帧率节拍）──
     const steps = this.clock.advance(dtMs);
     const clip = this.clips.get(this.currentClipId);
-    const explicitFrameCount = clip?.frames.length ?? 0;
-    const frameCount = explicitFrameCount > 0 ? explicitFrameCount : 8; // 程序化 clip 用 8 相位
+    const frameCount = Math.max(1, clip?.frames.length ?? 8); // 程序化 clip 用 8 相位
 
     if (steps > 0) {
       const prevFrame = this.currentFrame;
