@@ -11,10 +11,13 @@
     "zh": "唯一目的是证明「新增犬种不用改代码」：本文件不含任何逻辑，只有数值。行动快、思考快、动画帧率高。",
     "en": "Exists solely to prove that adding a species requires no code changes. This file contains no logic, only numbers: fast movement, fast thinking, high animation framerate."
   },
-
   "physical": {
     "bodyScale": 0.86,
-    "hitbox": { "w": 62, "h": 54, "anchorY": 0.92 },
+    "hitbox": {
+      "w": 62,
+      "h": 54,
+      "anchorY": 0.92
+    },
     "grayboxTint": 16777215,
     "silhouette": {
       "bodyLength": 1.18,
@@ -28,7 +31,6 @@
       "tailAttach": 0.06
     }
   },
-
   "personality": {
     "temperament": {
       "gentleness": 0.35,
@@ -41,28 +43,51 @@
       "obedience": 0.85,
       "randomness": 0.3
     },
-    "traits": ["swift", "alert", "restless"]
+    "traits": [
+      "swift",
+      "alert",
+      "restless"
+    ]
   },
-
   "cognition": {
     "decisionIntervalMs": 260,
-    "reactionDelayMs": [60, 180],
+    "reactionDelayMs": [
+      60,
+      180
+    ],
     "attentionSpanMs": 4000,
     "memorySpanMs": 20000,
     "learningRate": 0.4
   },
-
   "animation": {
     "targetFps": 12,
-    "breath": { "freqHz": 0.42, "ampPx": 1.6, "bodyScaleY": 0.022 },
-    "blink": { "baseIntervalMs": 2600, "varianceMs": 1400, "durationMs": 110 },
-    "tail": { "segments": 4, "baseAngleDeg": 14, "maxSwingDeg": 34, "delayPerSegMs": 55 },
-    "ear": { "jitterDeg": 7, "triggerBias": 0.45 },
-    "float": { "ampPx": 1.1, "freqHz": 0.24 },
+    "breath": {
+      "freqHz": 0.42,
+      "ampPx": 1.6,
+      "bodyScaleY": 0.022
+    },
+    "blink": {
+      "baseIntervalMs": 2600,
+      "varianceMs": 1400,
+      "durationMs": 110
+    },
+    "tail": {
+      "segments": 4,
+      "baseAngleDeg": 14,
+      "maxSwingDeg": 34,
+      "delayPerSegMs": 55
+    },
+    "ear": {
+      "jitterDeg": 7,
+      "triggerBias": 0.45
+    },
+    "float": {
+      "ampPx": 1.1,
+      "freqHz": 0.24
+    },
     "transitions": {},
     "defaultTransitionMs": 110
   },
-
   "locomotion": {
     "walkSpeedPx": 62,
     "runSpeedPx": 118,
@@ -71,9 +96,30 @@
     "wanderChancePerMin": 14,
     "arriveThresholdPx": 2
   },
-
   "resources": {
     "assetRoot": "",
-    "animationClips": {}
+    "animationClips": {},
+    "sprites": {
+      "format": "sheet-row",
+      "defaults": {
+        "frameWidth": 96,
+        "frameHeight": 64,
+        "anchor": [
+          0.52,
+          0.92
+        ],
+        "baselineY": 60,
+        "facing": "right",
+        "loop": true
+      },
+      "clips": {
+        "idle": {
+          "src": "sprites/side-idle.png",
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        }
+      }
+    }
   }
 }
