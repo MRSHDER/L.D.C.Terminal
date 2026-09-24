@@ -33,11 +33,14 @@ import swiftSpecies from '../src/species/graybox-swift/species.json';
 import swiftBehaviors from '../src/species/graybox-swift/behaviors.json';
 import shySpecies from '../src/species/graybox-shy/species.json';
 import shyBehaviors from '../src/species/graybox-shy/behaviors.json';
+import berneseSpecies from '../src/species/bernese-mountain-dog/species.json';
+import berneseBehaviors from '../src/species/bernese-mountain-dog/behaviors.json';
 
 const SOURCES: readonly SpeciesSource[] = [
   { id: 'graybox', species: grayboxSpecies, behaviors: grayboxBehaviors },
   { id: 'graybox-swift', species: swiftSpecies, behaviors: swiftBehaviors },
   { id: 'graybox-shy', species: shySpecies, behaviors: shyBehaviors },
+  { id: 'bernese-mountain-dog', species: berneseSpecies, behaviors: berneseBehaviors },
 ];
 
 const BOUNDS = { w: 320, h: 200 };
