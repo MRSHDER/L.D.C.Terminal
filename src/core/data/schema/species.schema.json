@@ -4,44 +4,129 @@
   "title": "L.D.C. Species Data",
   "description": "单一犬种的完整数据。新增犬种时只增加本文件与资源目录，不修改核心代码。",
   "type": "object",
-  "required": ["$schema", "version", "id", "displayName", "catalogNo", "physical", "personality", "cognition", "locomotion"],
+  "required": [
+    "$schema",
+    "version",
+    "id",
+    "displayName",
+    "catalogNo",
+    "physical",
+    "personality",
+    "cognition",
+    "locomotion"
+  ],
   "additionalProperties": false,
   "properties": {
-    "$schema": { "const": "ldc/species/v1" },
-    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
-    "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
-    "displayName": { "$ref": "#/definitions/localizedText" },
-    "catalogNo": { "type": "string", "pattern": "^LDC-\\d{3}$" },
-    "description": { "$ref": "#/definitions/localizedText" },
+    "$schema": {
+      "const": "ldc/species/v1"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "displayName": {
+      "$ref": "#/definitions/localizedText"
+    },
+    "catalogNo": {
+      "type": "string",
+      "pattern": "^LDC-\\d{3}$"
+    },
+    "description": {
+      "$ref": "#/definitions/localizedText"
+    },
     "physical": {
       "type": "object",
-      "required": ["bodyScale", "hitbox"],
+      "required": [
+        "bodyScale",
+        "hitbox"
+      ],
       "additionalProperties": false,
       "properties": {
-        "bodyScale": { "type": "number", "exclusiveMinimum": 0, "maximum": 5 },
+        "bodyScale": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 5
+        },
         "hitbox": {
           "type": "object",
-          "required": ["w", "h"],
+          "required": [
+            "w",
+            "h"
+          ],
           "additionalProperties": false,
           "properties": {
-            "w": { "type": "number", "exclusiveMinimum": 0 },
-            "h": { "type": "number", "exclusiveMinimum": 0 },
-            "anchorY": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.85 }
+            "w": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "h": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "anchorY": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0.85
+            }
           }
         },
         "silhouette": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "bodyLength": { "type": "number", "minimum": 0.6, "maximum": 2.4 },
-            "chestDepth": { "type": "number", "minimum": 0.35, "maximum": 1.2 },
-            "legLength": { "type": "number", "minimum": 0.15, "maximum": 1.1 },
-            "headForward": { "type": "number", "minimum": 0, "maximum": 1.2 },
-            "headSize": { "type": "number", "minimum": 0.25, "maximum": 1 },
-            "snoutLength": { "type": "number", "minimum": 0, "maximum": 1.2 },
-            "earShape": { "type": "string", "enum": ["prick", "drop", "fold"] },
-            "earLength": { "type": "number", "minimum": 0.15, "maximum": 1.2 },
-            "tailAttach": { "type": "number", "minimum": 0, "maximum": 1 }
+            "bodyLength": {
+              "type": "number",
+              "minimum": 0.6,
+              "maximum": 2.4
+            },
+            "chestDepth": {
+              "type": "number",
+              "minimum": 0.35,
+              "maximum": 1.2
+            },
+            "legLength": {
+              "type": "number",
+              "minimum": 0.15,
+              "maximum": 1.1
+            },
+            "headForward": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1.2
+            },
+            "headSize": {
+              "type": "number",
+              "minimum": 0.25,
+              "maximum": 1
+            },
+            "snoutLength": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1.2
+            },
+            "earShape": {
+              "type": "string",
+              "enum": [
+                "prick",
+                "drop",
+                "fold"
+              ]
+            },
+            "earLength": {
+              "type": "number",
+              "minimum": 0.15,
+              "maximum": 1.2
+            },
+            "tailAttach": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
           }
         },
         "pettingHotspots": {
@@ -49,10 +134,16 @@
           "default": [],
           "items": {
             "type": "object",
-            "required": ["id", "poly", "reaction"],
+            "required": [
+              "id",
+              "poly",
+              "reaction"
+            ],
             "additionalProperties": false,
             "properties": {
-              "id": { "type": "string" },
+              "id": {
+                "type": "string"
+              },
               "poly": {
                 "type": "array",
                 "minItems": 3,
@@ -60,38 +151,99 @@
                   "type": "array",
                   "minItems": 2,
                   "maxItems": 2,
-                  "items": { "type": "number" }
+                  "items": {
+                    "type": "number"
+                  }
                 }
               },
-              "reaction": { "type": "string" }
+              "reaction": {
+                "type": "string"
+              }
             }
           }
         },
-        "grayboxTint": { "type": "integer", "minimum": 0, "maximum": 16777215, "default": 16777215 },
+        "grayboxTint": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16777215,
+          "default": 16777215
+        },
         "coat": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "base": { "type": "integer", "minimum": 0, "maximum": 16777215 },
-            "shade": { "type": "integer", "minimum": 0, "maximum": 16777215 },
-            "highlight": { "type": "integer", "minimum": 0, "maximum": 16777215 },
-            "outline": { "type": "integer", "minimum": 0, "maximum": 16777215 },
-            "rust": { "type": "integer", "minimum": 0, "maximum": 16777215 },
-            "rustShade": { "type": "integer", "minimum": 0, "maximum": 16777215 },
-            "white": { "type": "integer", "minimum": 0, "maximum": 16777215 },
-            "whiteShade": { "type": "integer", "minimum": 0, "maximum": 16777215 },
-            "nose": { "type": "integer", "minimum": 0, "maximum": 16777215 },
-            "eye": { "type": "integer", "minimum": 0, "maximum": 16777215 },
+            "base": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16777215
+            },
+            "shade": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16777215
+            },
+            "highlight": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16777215
+            },
+            "outline": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16777215
+            },
+            "rust": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16777215
+            },
+            "rustShade": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16777215
+            },
+            "white": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16777215
+            },
+            "whiteShade": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16777215
+            },
+            "nose": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16777215
+            },
+            "eye": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16777215
+            },
             "markings": {
               "type": "object",
               "additionalProperties": false,
               "properties": {
-                "blaze": { "type": "boolean" },
-                "muzzle": { "type": "boolean" },
-                "bib": { "type": "boolean" },
-                "socks": { "type": "boolean" },
-                "rustPoints": { "type": "boolean" },
-                "tailTip": { "type": "boolean" }
+                "blaze": {
+                  "type": "boolean"
+                },
+                "muzzle": {
+                  "type": "boolean"
+                },
+                "bib": {
+                  "type": "boolean"
+                },
+                "socks": {
+                  "type": "boolean"
+                },
+                "rustPoints": {
+                  "type": "boolean"
+                },
+                "tailTip": {
+                  "type": "boolean"
+                }
               }
             }
           }
@@ -100,105 +252,219 @@
     },
     "personality": {
       "type": "object",
-      "required": ["temperament"],
+      "required": [
+        "temperament"
+      ],
       "additionalProperties": false,
       "properties": {
         "temperament": {
           "type": "object",
-          "required": ["gentleness", "energy", "curiosity", "stubbornness", "shyness", "clinginess", "playfulness", "obedience", "randomness"],
+          "required": [
+            "gentleness",
+            "energy",
+            "curiosity",
+            "stubbornness",
+            "shyness",
+            "clinginess",
+            "playfulness",
+            "obedience",
+            "randomness"
+          ],
           "additionalProperties": false,
           "properties": {
-            "gentleness": { "$ref": "#/definitions/unit" },
-            "energy": { "$ref": "#/definitions/unit" },
-            "curiosity": { "$ref": "#/definitions/unit" },
-            "stubbornness": { "$ref": "#/definitions/unit" },
-            "shyness": { "$ref": "#/definitions/unit" },
-            "clinginess": { "$ref": "#/definitions/unit" },
-            "playfulness": { "$ref": "#/definitions/unit" },
-            "obedience": { "$ref": "#/definitions/unit" },
-            "randomness": { "$ref": "#/definitions/unit" }
+            "gentleness": {
+              "$ref": "#/definitions/unit"
+            },
+            "energy": {
+              "$ref": "#/definitions/unit"
+            },
+            "curiosity": {
+              "$ref": "#/definitions/unit"
+            },
+            "stubbornness": {
+              "$ref": "#/definitions/unit"
+            },
+            "shyness": {
+              "$ref": "#/definitions/unit"
+            },
+            "clinginess": {
+              "$ref": "#/definitions/unit"
+            },
+            "playfulness": {
+              "$ref": "#/definitions/unit"
+            },
+            "obedience": {
+              "$ref": "#/definitions/unit"
+            },
+            "randomness": {
+              "$ref": "#/definitions/unit"
+            }
           }
         },
-        "traits": { "type": "array", "items": { "type": "string" }, "default": [] }
+        "traits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
       }
     },
     "cognition": {
       "type": "object",
-      "required": ["decisionIntervalMs", "reactionDelayMs"],
+      "required": [
+        "decisionIntervalMs",
+        "reactionDelayMs"
+      ],
       "additionalProperties": false,
       "properties": {
-        "decisionIntervalMs": { "type": "integer", "minimum": 16 },
-        "reactionDelayMs": { "$ref": "#/definitions/range" },
-        "attentionSpanMs": { "type": "integer", "minimum": 100, "default": 6000 },
-        "memorySpanMs": { "type": "integer", "minimum": 100, "default": 30000 },
-        "learningRate": { "$ref": "#/definitions/unit" }
+        "decisionIntervalMs": {
+          "type": "integer",
+          "minimum": 16
+        },
+        "reactionDelayMs": {
+          "$ref": "#/definitions/range"
+        },
+        "attentionSpanMs": {
+          "type": "integer",
+          "minimum": 100,
+          "default": 6000
+        },
+        "memorySpanMs": {
+          "type": "integer",
+          "minimum": 100,
+          "default": 30000
+        },
+        "learningRate": {
+          "$ref": "#/definitions/unit"
+        }
       }
     },
     "animation": {
       "type": "object",
-      "required": ["targetFps"],
+      "required": [
+        "targetFps"
+      ],
       "additionalProperties": false,
       "properties": {
-        "targetFps": { "type": "number", "minimum": 1, "maximum": 60 },
+        "targetFps": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 60
+        },
         "breath": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "freqHz": { "type": "number", "minimum": 0 },
-            "ampPx": { "type": "number", "minimum": 0 },
-            "bodyScaleY": { "type": "number", "minimum": 0 }
+            "freqHz": {
+              "type": "number",
+              "minimum": 0
+            },
+            "ampPx": {
+              "type": "number",
+              "minimum": 0
+            },
+            "bodyScaleY": {
+              "type": "number",
+              "minimum": 0
+            }
           }
         },
         "blink": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "baseIntervalMs": { "type": "number", "minimum": 100 },
-            "varianceMs": { "type": "number", "minimum": 0 },
-            "durationMs": { "type": "number", "minimum": 16 }
+            "baseIntervalMs": {
+              "type": "number",
+              "minimum": 100
+            },
+            "varianceMs": {
+              "type": "number",
+              "minimum": 0
+            },
+            "durationMs": {
+              "type": "number",
+              "minimum": 16
+            }
           }
         },
         "tail": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "segments": { "type": "integer", "minimum": 1, "maximum": 8 },
-            "baseAngleDeg": { "type": "number" },
-            "maxSwingDeg": { "type": "number", "minimum": 0 },
-            "delayPerSegMs": { "type": "number", "minimum": 0 }
+            "segments": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8
+            },
+            "baseAngleDeg": {
+              "type": "number"
+            },
+            "maxSwingDeg": {
+              "type": "number",
+              "minimum": 0
+            },
+            "delayPerSegMs": {
+              "type": "number",
+              "minimum": 0
+            }
           }
         },
         "ear": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "jitterDeg": { "type": "number", "minimum": 0 },
-            "triggerBias": { "$ref": "#/definitions/unit" }
+            "jitterDeg": {
+              "type": "number",
+              "minimum": 0
+            },
+            "triggerBias": {
+              "$ref": "#/definitions/unit"
+            }
           }
         },
         "float": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "ampPx": { "type": "number", "minimum": 0 },
-            "freqHz": { "type": "number", "minimum": 0 }
+            "ampPx": {
+              "type": "number",
+              "minimum": 0
+            },
+            "freqHz": {
+              "type": "number",
+              "minimum": 0
+            }
           }
         },
         "transitions": {
           "type": "object",
-          "additionalProperties": { "type": "number", "minimum": 0 },
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0
+          },
           "default": {}
         },
-        "defaultTransitionMs": { "type": "number", "minimum": 0, "default": 200 }
+        "defaultTransitionMs": {
+          "type": "number",
+          "minimum": 0,
+          "default": 200
+        }
       }
     },
     "needs": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "hunger": { "$ref": "#/definitions/needConfig" },
-        "energy": { "$ref": "#/definitions/needConfig" },
-        "social": { "$ref": "#/definitions/needConfig" }
+        "hunger": {
+          "$ref": "#/definitions/needConfig"
+        },
+        "energy": {
+          "$ref": "#/definitions/needConfig"
+        },
+        "social": {
+          "$ref": "#/definitions/needConfig"
+        }
       }
     },
     "preferences": {
@@ -209,36 +475,88 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "base": { "$ref": "#/definitions/unit" },
-            "favorites": { "type": "array", "items": { "type": "string" }, "default": [] },
-            "dislikes": { "type": "array", "items": { "type": "string" }, "default": [] }
+            "base": {
+              "$ref": "#/definitions/unit"
+            },
+            "favorites": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "dislikes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            }
           }
         },
-        "toys": { "$ref": "#/definitions/unitMap" },
-        "places": { "$ref": "#/definitions/unitMap" },
-        "touch": { "$ref": "#/definitions/unitMap" }
+        "toys": {
+          "$ref": "#/definitions/unitMap"
+        },
+        "places": {
+          "$ref": "#/definitions/unitMap"
+        },
+        "touch": {
+          "$ref": "#/definitions/unitMap"
+        }
       }
     },
     "locomotion": {
       "type": "object",
-      "required": ["walkSpeedPx"],
+      "required": [
+        "walkSpeedPx"
+      ],
       "additionalProperties": false,
       "properties": {
-        "walkSpeedPx": { "type": "number", "minimum": 0 },
-        "runSpeedPx": { "type": "number", "minimum": 0 },
-        "turnRateDeg": { "type": "number", "minimum": 0 },
-        "idleWanderRadiusPx": { "type": "number", "minimum": 0 },
-        "wanderChancePerMin": { "type": "number", "minimum": 0 },
-        "arriveThresholdPx": { "type": "number", "minimum": 0 }
+        "walkSpeedPx": {
+          "type": "number",
+          "minimum": 0
+        },
+        "runSpeedPx": {
+          "type": "number",
+          "minimum": 0
+        },
+        "turnRateDeg": {
+          "type": "number",
+          "minimum": 0
+        },
+        "idleWanderRadiusPx": {
+          "type": "number",
+          "minimum": 0
+        },
+        "wanderChancePerMin": {
+          "type": "number",
+          "minimum": 0
+        },
+        "arriveThresholdPx": {
+          "type": "number",
+          "minimum": 0
+        }
       }
     },
     "resources": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "assetRoot": { "type": "string" },
-        "animationClips": { "$ref": "#/definitions/clipMap" },
-        "audio": { "type": "object", "additionalProperties": { "type": "string" } }
+        "assetRoot": {
+          "type": "string"
+        },
+        "animationClips": {
+          "$ref": "#/definitions/clipMap"
+        },
+        "audio": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "sprites": {
+          "$ref": "#/definitions/spriteResources"
+        }
       }
     },
     "affection": {
@@ -250,21 +568,45 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "gainPerPet": { "type": "number", "minimum": 0, "maximum": 1 },
-            "decayPerSec": { "type": "number", "minimum": 0 },
-            "penaltyPerSecWhenAnnoyed": { "type": "number", "minimum": 0 },
-            "requiresTouchToNotice": { "type": "boolean" },
+            "gainPerPet": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "decayPerSec": {
+              "type": "number",
+              "minimum": 0
+            },
+            "penaltyPerSecWhenAnnoyed": {
+              "type": "number",
+              "minimum": 0
+            },
+            "requiresTouchToNotice": {
+              "type": "boolean"
+            },
             "ladder": {
               "type": "array",
               "minItems": 1,
               "items": {
                 "type": "object",
-                "required": ["atBond", "state"],
+                "required": [
+                  "atBond",
+                  "state"
+                ],
                 "additionalProperties": false,
                 "properties": {
-                  "atBond": { "type": "number", "minimum": 0, "maximum": 1 },
-                  "state": { "type": "string", "minLength": 1 },
-                  "label": { "$ref": "#/definitions/localizedText" }
+                  "atBond": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "state": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "label": {
+                    "$ref": "#/definitions/localizedText"
+                  }
                 }
               }
             }
@@ -274,22 +616,50 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "minEffectiveMs": { "type": "number", "minimum": 16 },
-            "pleasureBase": { "$ref": "#/definitions/unit" },
-            "arousalGain": { "$ref": "#/definitions/unit" },
-            "tolerance": { "type": "integer", "minimum": 1 }
+            "minEffectiveMs": {
+              "type": "number",
+              "minimum": 16
+            },
+            "pleasureBase": {
+              "$ref": "#/definitions/unit"
+            },
+            "arousalGain": {
+              "$ref": "#/definitions/unit"
+            },
+            "tolerance": {
+              "type": "integer",
+              "minimum": 1
+            }
           }
         },
         "annoyance": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "windowMs": { "type": "number", "minimum": 100 },
-            "threshold": { "type": "integer", "minimum": 1 },
-            "annoyancePerExcess": { "type": "number", "minimum": 0 },
-            "decayPerSec": { "type": "number", "minimum": 0 },
-            "leaveAt": { "type": "number", "minimum": 0.01 },
-            "sulkMs": { "type": "number", "minimum": 0 }
+            "windowMs": {
+              "type": "number",
+              "minimum": 100
+            },
+            "threshold": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "annoyancePerExcess": {
+              "type": "number",
+              "minimum": 0
+            },
+            "decayPerSec": {
+              "type": "number",
+              "minimum": 0
+            },
+            "leaveAt": {
+              "type": "number",
+              "minimum": 0.01
+            },
+            "sulkMs": {
+              "type": "number",
+              "minimum": 0
+            }
           }
         }
       }
@@ -299,59 +669,218 @@
       "description": "Milestone 2：房间外观。本阶段只有一个房间，无 UI。",
       "additionalProperties": false,
       "properties": {
-        "floorLineRatio": { "type": "number", "minimum": 0, "maximum": 1 },
-        "floorColor": { "type": "integer", "minimum": 0 },
-        "floorShadeColor": { "type": "integer", "minimum": 0 },
-        "wallColor": { "type": "integer", "minimum": 0 },
-        "showGrid": { "type": "boolean" },
+        "floorLineRatio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "floorColor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "floorShadeColor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "wallColor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "showGrid": {
+          "type": "boolean"
+        },
         "playerAnchor": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "xRatio": { "type": "number" },
-            "yRatio": { "type": "number" }
+            "xRatio": {
+              "type": "number"
+            },
+            "yRatio": {
+              "type": "number"
+            }
           }
         }
       }
     }
   },
   "definitions": {
-    "unit": { "type": "number", "minimum": 0, "maximum": 1 },
+    "unit": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
     "range": {
       "type": "array",
       "minItems": 2,
       "maxItems": 2,
-      "items": { "type": "number", "minimum": 0 }
+      "items": {
+        "type": "number",
+        "minimum": 0
+      }
     },
     "localizedText": {
       "type": "object",
       "minProperties": 1,
       "additionalProperties": false,
       "properties": {
-        "zh": { "type": "string" },
-        "en": { "type": "string" },
-        "ja": { "type": "string" }
+        "zh": {
+          "type": "string"
+        },
+        "en": {
+          "type": "string"
+        },
+        "ja": {
+          "type": "string"
+        }
       }
     },
     "unitMap": {
       "type": "object",
-      "additionalProperties": { "$ref": "#/definitions/unit" }
+      "additionalProperties": {
+        "$ref": "#/definitions/unit"
+      }
     },
     "needConfig": {
       "type": "object",
-      "required": ["decayPerMin", "criticalAt"],
+      "required": [
+        "decayPerMin",
+        "criticalAt"
+      ],
       "additionalProperties": false,
       "properties": {
-        "decayPerMin": { "type": "number", "minimum": 0 },
-        "criticalAt": { "$ref": "#/definitions/unit" },
-        "restorePerMin": { "type": "number", "minimum": 0 }
+        "decayPerMin": {
+          "type": "number",
+          "minimum": 0
+        },
+        "criticalAt": {
+          "$ref": "#/definitions/unit"
+        },
+        "restorePerMin": {
+          "type": "number",
+          "minimum": 0
+        }
       }
     },
     "clipMap": {
       "type": "object",
       "additionalProperties": {
         "type": "array",
-        "items": { "type": "string" }
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "spriteAnchor": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "number"
+      }
+    },
+    "spriteDefaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "frameWidth": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "frameHeight": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "anchor": {
+          "$ref": "#/definitions/spriteAnchor"
+        },
+        "baselineY": {
+          "type": "number",
+          "minimum": 0
+        },
+        "facing": {
+          "type": "string",
+          "enum": [
+            "left",
+            "right"
+          ]
+        },
+        "loop": {
+          "type": "boolean"
+        }
+      }
+    },
+    "spriteClip": {
+      "type": "object",
+      "required": [
+        "src",
+        "frames"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "src": {
+          "type": "string"
+        },
+        "frames": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "fps": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 60
+        },
+        "loop": {
+          "type": "boolean"
+        },
+        "frameWidth": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "frameHeight": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "anchor": {
+          "$ref": "#/definitions/spriteAnchor"
+        },
+        "baselineY": {
+          "type": "number",
+          "minimum": 0
+        },
+        "facing": {
+          "type": "string",
+          "enum": [
+            "left",
+            "right"
+          ]
+        }
+      }
+    },
+    "spriteResources": {
+      "type": "object",
+      "required": [
+        "format",
+        "clips"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": [
+            "sheet-row",
+            "frame-files"
+          ]
+        },
+        "defaults": {
+          "$ref": "#/definitions/spriteDefaults"
+        },
+        "clips": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/spriteClip"
+          }
+        }
       }
     }
   }
