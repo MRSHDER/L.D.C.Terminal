@@ -115,6 +115,7 @@ const POSE_BY_STATE: Readonly<Record<string, PoseTarget>> = {
   // ── 常规行为 ──
   Idle: { bodyHeightRatio: 1, headDropPx: 0, sleeping: false },
   Walk: { bodyHeightRatio: 0.97, headDropPx: 0, sleeping: false },
+  Run: { bodyHeightRatio: 0.95, headDropPx: 0, sleeping: false },
   Sit: { bodyHeightRatio: 0.72, headDropPx: 4, sleeping: false },
   Sleep: { bodyHeightRatio: 0.58, headDropPx: 12, sleeping: true },
 
@@ -125,6 +126,11 @@ const POSE_BY_STATE: Readonly<Record<string, PoseTarget>> = {
   Approach: { bodyHeightRatio: 0.97, headDropPx: 0, sleeping: false },
   // 摇尾巴：站直且抬头，配合情绪层拉高的 arousal → 尾巴自动摆得欢
   WagTail: { bodyHeightRatio: 1.0, headDropPx: -4, sleeping: false },
+  HeadLow: { bodyHeightRatio: 0.92, headDropPx: 10, sleeping: false },
+  LowHead: { bodyHeightRatio: 0.92, headDropPx: 10, sleeping: false },
+  Sniff: { bodyHeightRatio: 0.92, headDropPx: 10, sleeping: false },
+  Eat: { bodyHeightRatio: 0.9, headDropPx: 12, sleeping: false },
+  Drink: { bodyHeightRatio: 0.9, headDropPx: 12, sleeping: false },
   // 闭眼享受：坐下 + 头微垂（放松）。
   // ★ 目标值取 1.0 而非 0.85。
   //   姿态插值是指数逼近（每帧向目标靠近一部分），
@@ -201,11 +207,17 @@ export class AnimationSystem {
     for (const stateId of [
       'Idle',
       'Walk',
+      'Run',
       'Sit',
       'Sleep',
       'LookAt',
       'Approach',
       'WagTail',
+      'HeadLow',
+      'LowHead',
+      'Sniff',
+      'Eat',
+      'Drink',
       'PetEnjoy',
       'Annoyed',
       'Retreat',
@@ -362,3 +374,4 @@ export class AnimationSystem {
     this.legPhase = 0;
   }
 }
+
