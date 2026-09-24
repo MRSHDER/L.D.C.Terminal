@@ -11,10 +11,13 @@
     "zh": "按伯恩山犬侧视剪影与三色毛画的程序化灰盒。形在 silhouette，色在 coat，渲染器不写死犬种。",
     "en": "Procedural graybox using Bernese Mountain Dog side-view proportions and tricolor markings. Shape lives in silhouette, color in coat."
   },
-
   "physical": {
     "bodyScale": 1.08,
-    "hitbox": { "w": 64, "h": 56, "anchorY": 0.92 },
+    "hitbox": {
+      "w": 64,
+      "h": 56,
+      "anchorY": 0.92
+    },
     "grayboxTint": 16777215,
     "silhouette": {
       "bodyLength": 1.12,
@@ -48,7 +51,6 @@
       }
     }
   },
-
   "personality": {
     "temperament": {
       "gentleness": 0.5,
@@ -61,41 +63,89 @@
       "obedience": 0.5,
       "randomness": 0.35
     },
-    "traits": ["neutral", "baseline"]
+    "traits": [
+      "neutral",
+      "baseline"
+    ]
   },
-
   "cognition": {
     "decisionIntervalMs": 500,
-    "reactionDelayMs": [200, 700],
+    "reactionDelayMs": [
+      200,
+      700
+    ],
     "attentionSpanMs": 6000,
     "memorySpanMs": 30000,
     "learningRate": 0.15
   },
-
   "animation": {
     "targetFps": 10,
-    "breath": { "freqHz": 0.22, "ampPx": 1.2, "bodyScaleY": 0.016 },
-    "blink": { "baseIntervalMs": 4200, "varianceMs": 2200, "durationMs": 140 },
-    "tail": { "segments": 3, "baseAngleDeg": 8, "maxSwingDeg": 18, "delayPerSegMs": 80 },
-    "ear": { "jitterDeg": 4, "triggerBias": 0.22 },
-    "float": { "ampPx": 0.8, "freqHz": 0.13 },
+    "breath": {
+      "freqHz": 0.22,
+      "ampPx": 1.2,
+      "bodyScaleY": 0.016
+    },
+    "blink": {
+      "baseIntervalMs": 4200,
+      "varianceMs": 2200,
+      "durationMs": 140
+    },
+    "tail": {
+      "segments": 3,
+      "baseAngleDeg": 8,
+      "maxSwingDeg": 18,
+      "delayPerSegMs": 80
+    },
+    "ear": {
+      "jitterDeg": 4,
+      "triggerBias": 0.22
+    },
+    "float": {
+      "ampPx": 0.8,
+      "freqHz": 0.13
+    },
     "transitions": {},
     "defaultTransitionMs": 220
   },
-
   "needs": {
-    "hunger": { "decayPerMin": 0.9, "criticalAt": 0.85, "restorePerMin": 12 },
-    "energy": { "decayPerMin": 0.6, "criticalAt": 0.8, "restorePerMin": 6 },
-    "social": { "decayPerMin": 1.4, "criticalAt": 0.75, "restorePerMin": 8 }
+    "hunger": {
+      "decayPerMin": 0.9,
+      "criticalAt": 0.85,
+      "restorePerMin": 12
+    },
+    "energy": {
+      "decayPerMin": 0.6,
+      "criticalAt": 0.8,
+      "restorePerMin": 6
+    },
+    "social": {
+      "decayPerMin": 1.4,
+      "criticalAt": 0.75,
+      "restorePerMin": 8
+    }
   },
-
   "preferences": {
-    "food": { "base": 0.7, "favorites": [], "dislikes": [] },
-    "toys": { "ball": 0.5, "rope": 0.5, "squeaky": 0.5 },
-    "places": { "nearPlayer": 0.6, "sunnySpot": 0.5, "underTable": 0.4 },
-    "touch": { "head": 0.7, "back": 0.7, "belly": 0.5 }
+    "food": {
+      "base": 0.7,
+      "favorites": [],
+      "dislikes": []
+    },
+    "toys": {
+      "ball": 0.5,
+      "rope": 0.5,
+      "squeaky": 0.5
+    },
+    "places": {
+      "nearPlayer": 0.6,
+      "sunnySpot": 0.5,
+      "underTable": 0.4
+    },
+    "touch": {
+      "head": 0.7,
+      "back": 0.7,
+      "belly": 0.5
+    }
   },
-
   "locomotion": {
     "walkSpeedPx": 30,
     "runSpeedPx": 65,
@@ -104,12 +154,32 @@
     "wanderChancePerMin": 3,
     "arriveThresholdPx": 3
   },
-
   "resources": {
     "assetRoot": "",
-    "animationClips": {}
+    "animationClips": {},
+    "sprites": {
+      "format": "sheet-row",
+      "defaults": {
+        "frameWidth": 96,
+        "frameHeight": 64,
+        "anchor": [
+          0.52,
+          0.92
+        ],
+        "baselineY": 60,
+        "facing": "right",
+        "loop": true
+      },
+      "clips": {
+        "idle": {
+          "src": "sprites/side-idle.png",
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        }
+      }
+    }
   },
-
   "affection": {
     "bonding": {
       "gainPerPet": 0.22,
@@ -117,11 +187,46 @@
       "penaltyPerSecWhenAnnoyed": 0.05,
       "requiresTouchToNotice": true,
       "ladder": [
-        { "atBond": 0.0, "state": "LookAt", "label": { "zh": "看向玩家", "en": "Looks at you" } },
-        { "atBond": 0.32, "state": "Approach", "label": { "zh": "靠近一点", "en": "Comes closer" } },
-        { "atBond": 0.55, "state": "Sit", "label": { "zh": "坐到你旁边", "en": "Sits beside you" } },
-        { "atBond": 0.76, "state": "WagTail", "label": { "zh": "摇尾巴", "en": "Wags tail" } },
-        { "atBond": 0.93, "state": "PetEnjoy", "label": { "zh": "闭眼享受", "en": "Eyes closed, content" } }
+        {
+          "atBond": 0,
+          "state": "LookAt",
+          "label": {
+            "zh": "看向玩家",
+            "en": "Looks at you"
+          }
+        },
+        {
+          "atBond": 0.32,
+          "state": "Approach",
+          "label": {
+            "zh": "靠近一点",
+            "en": "Comes closer"
+          }
+        },
+        {
+          "atBond": 0.55,
+          "state": "Sit",
+          "label": {
+            "zh": "坐到你旁边",
+            "en": "Sits beside you"
+          }
+        },
+        {
+          "atBond": 0.76,
+          "state": "WagTail",
+          "label": {
+            "zh": "摇尾巴",
+            "en": "Wags tail"
+          }
+        },
+        {
+          "atBond": 0.93,
+          "state": "PetEnjoy",
+          "label": {
+            "zh": "闭眼享受",
+            "en": "Eyes closed, content"
+          }
+        }
       ]
     },
     "petting": {
@@ -139,13 +244,15 @@
       "sulkMs": 5200
     }
   },
-
   "room": {
     "floorLineRatio": 0.74,
     "floorColor": 1973798,
     "floorShadeColor": 1447452,
     "wallColor": 1184280,
     "showGrid": false,
-    "playerAnchor": { "xRatio": 0.5, "yRatio": 1.15 }
+    "playerAnchor": {
+      "xRatio": 0.5,
+      "yRatio": 1.15
+    }
   }
 }
