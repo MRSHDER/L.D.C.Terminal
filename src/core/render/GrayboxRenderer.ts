@@ -1,6 +1,6 @@
 /**
  * L.D.C. — 渲染器（PixiJS）
- * 默认用现有灰盒/生成帧。若 species.resources.sprites.clips.idle 可加载，则 idle 改播 sheet。
+ * 默认使用多状态狗狗精灵帧。若 species.resources.sprites.clips.idle 可加载，则 idle 可由犬种数据覆盖。
  */
 
 import {
@@ -15,9 +15,12 @@ import {
 import type { RenderState } from '../animation/AnimationSystem';
 import type { SpeciesData } from '../data/types';
 import { PALETTE } from './palette';
-import { DOG_FRAME_H, DOG_FRAME_IMAGES, DOG_FRAME_W } from './spriteDogGenerated';
-import { POSE_CLIPS, POSE_H, POSE_W } from './spriteDogPoses';
-import { textureFromIndexed } from './indexedTexture';
+import {
+  DOG_ANIMATION_FRAMES,
+  DOG_FRAME_H,
+  DOG_FRAME_W,
+  type DogAnimationId,
+} from './spriteDogStates';
 import { loadImage, readIdleClip, resolveSpeciesAssetUrl, sliceRowSheet } from './spriteAssets';
 
 export interface GrayboxRendererOptions {
@@ -28,8 +31,16 @@ export interface GrayboxRendererOptions {
 }
 
 const WALK_CLIPS = new Set(['Walk', 'Approach', 'Retreat']);
+const RUN_CLIPS = new Set(['Run']);
+const SIT_CLIPS = new Set(['Sit', 'PetEnjoy', 'Sleep']);
+const HEAD_LOW_CLIPS = new Set(['HeadLow', 'LowHead', 'Sniff']);
+const WAG_TAIL_CLIPS = new Set(['WagTail']);
+const EAT_CLIPS = new Set(['Eat', 'Eating']);
+const DRINK_CLIPS = new Set(['Drink', 'Drinking']);
 const IDLE_CLIPS = new Set(['Idle', 'LookAt']);
-const POSE_SCALE = DOG_FRAME_W / POSE_W;
+const DEFAULT_SCALE = 0.96;
+
+type DogTextureMap = Readonly<Record<DogAnimationId, readonly Texture[]>>;
 
 function textureFromDataUrl(src: string): Promise<Texture> {
   return new Promise((resolve, reject) => {
@@ -48,6 +59,31 @@ function textureFromDataUrl(src: string): Promise<Texture> {
   });
 }
 
+async function loadDogTextures(): Promise<DogTextureMap> {
+  return {
+    idle: await Promise.all(DOG_ANIMATION_FRAMES.idle.map(textureFromDataUrl)),
+    walk: await Promise.all(DOG_ANIMATION_FRAMES.walk.map(textureFromDataUrl)),
+    run: await Promise.all(DOG_ANIMATION_FRAMES.run.map(textureFromDataUrl)),
+    sit: await Promise.all(DOG_ANIMATION_FRAMES.sit.map(textureFromDataUrl)),
+    headLow: await Promise.all(DOG_ANIMATION_FRAMES.headLow.map(textureFromDataUrl)),
+    wagTail: await Promise.all(DOG_ANIMATION_FRAMES.wagTail.map(textureFromDataUrl)),
+    eat: await Promise.all(DOG_ANIMATION_FRAMES.eat.map(textureFromDataUrl)),
+    drink: await Promise.all(DOG_ANIMATION_FRAMES.drink.map(textureFromDataUrl)),
+  };
+}
+
+function animationForRenderState(rs: RenderState): DogAnimationId {
+  if (RUN_CLIPS.has(rs.clipId)) return 'run';
+  if (WALK_CLIPS.has(rs.clipId)) return rs.speedRatio > 0.72 ? 'run' : 'walk';
+  if (SIT_CLIPS.has(rs.clipId)) return 'sit';
+  if (HEAD_LOW_CLIPS.has(rs.clipId)) return 'headLow';
+  if (WAG_TAIL_CLIPS.has(rs.clipId)) return 'wagTail';
+  if (EAT_CLIPS.has(rs.clipId)) return 'eat';
+  if (DRINK_CLIPS.has(rs.clipId)) return 'drink';
+  if (rs.moving) return rs.speedRatio > 0.72 ? 'run' : 'walk';
+  return 'idle';
+}
+
 export class GrayboxRenderer {
   readonly app: Application;
   private readonly options: GrayboxRendererOptions;
@@ -55,15 +91,13 @@ export class GrayboxRenderer {
   private readonly background: Graphics;
   private readonly grid: Graphics;
   private readonly shadowLayer: Graphics;
-  private dogTextures: Texture[] = [];
-  private poseTextures: Record<string, Texture[]> = {};
+  private dogTextures: DogTextureMap | null = null;
   private idleSheet: Texture[] | null = null;
   private idleLoadGen = 0;
   private dog: Sprite | null = null;
   private species: SpeciesData | null = null;
   private initialized = false;
   private hostElement: HTMLElement | null = null;
-  private usingPose = false;
 
   constructor(options: GrayboxRendererOptions) {
     this.options = options;
@@ -93,12 +127,8 @@ export class GrayboxRenderer {
     this.app.canvas.style.height = '100%';
     this.app.ticker.stop();
 
-    this.dogTextures = await Promise.all(DOG_FRAME_IMAGES.map(textureFromDataUrl));
-    this.poseTextures = {};
-    for (const [clip, frames] of Object.entries(POSE_CLIPS)) {
-      this.poseTextures[clip] = frames.map((pixels) => textureFromIndexed(pixels, POSE_W, POSE_H));
-    }
-    const first = this.dogTextures[0];
+    this.dogTextures = await loadDogTextures();
+    const first = this.dogTextures.idle[0];
     if (!first) throw new Error('dog frames missing');
     const dog = new Sprite(first);
     dog.anchor.set(0.52, 0.92);
@@ -164,21 +194,16 @@ export class GrayboxRenderer {
   }
 
   private pickTexture(rs: RenderState): Texture {
+    const textures = this.dogTextures;
+    if (!textures) throw new Error('dog textures missing');
+
     if (this.idleSheet && this.idleSheet.length > 0 && IDLE_CLIPS.has(rs.clipId)) {
-      this.usingPose = false;
       return this.idleSheet[rs.frameIndex % this.idleSheet.length] ?? this.idleSheet[0]!;
     }
-    const poses = this.poseTextures[rs.clipId];
-    if (poses && poses.length > 0) {
-      this.usingPose = true;
-      return poses[rs.frameIndex % poses.length] ?? poses[0]!;
-    }
-    this.usingPose = false;
-    const idle = this.dogTextures[0]!;
-    if (WALK_CLIPS.has(rs.clipId) || rs.moving) {
-      return this.dogTextures[rs.frameIndex % this.dogTextures.length] ?? idle;
-    }
-    return idle;
+
+    const animationId = animationForRenderState(rs);
+    const frames = textures[animationId];
+    return frames[rs.frameIndex % frames.length] ?? textures.idle[0]!;
   }
 
   render(rs: RenderState): void {
@@ -191,7 +216,7 @@ export class GrayboxRenderer {
     const dogTexture = this.pickTexture(rs);
     if (dogTexture && this.dog.texture !== dogTexture) this.dog.texture = dogTexture;
 
-    const scale = this.usingPose ? POSE_SCALE : 1;
+    const scale = DEFAULT_SCALE;
     const baseX = Math.round(rs.x + p.offsetX);
     const baseY = Math.round(rs.y + p.offsetY);
 
@@ -248,3 +273,4 @@ export class GrayboxRenderer {
     return this.app.ticker;
   }
 }
+
