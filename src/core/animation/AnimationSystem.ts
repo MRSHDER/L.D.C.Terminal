@@ -295,7 +295,8 @@ export class AnimationSystem {
     // ── ② 像素帧推进（低帧率节拍）──
     const steps = this.clock.advance(dtMs);
     const clip = this.clips.get(this.currentClipId);
-    const frameCount = Math.max(1, clip?.frames.length ?? 8); // 程序化 clip 用 8 相位
+    const explicitFrameCount = clip?.frames.length ?? 0;
+    const frameCount = explicitFrameCount > 0 ? explicitFrameCount : 8; // 程序化 clip 用 8 相位
 
     if (steps > 0) {
       const prevFrame = this.currentFrame;
