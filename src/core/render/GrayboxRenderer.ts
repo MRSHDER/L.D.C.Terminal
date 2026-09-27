@@ -145,9 +145,12 @@ export class GrayboxRenderer {
 
   private async loadIdleSheet(species: SpeciesData): Promise<void> {
     const gen = ++this.idleLoadGen;
-    this.idleSheet = null;
     const declared = readIdleClip(species);
-    if (!declared) return;
+    if (!declared) {
+      this.idleSheet = null;
+      return;
+    }
+
     const { sheet, clip } = declared;
     const frameWidth = clip.frameWidth ?? sheet.defaults?.frameWidth ?? 96;
     const frameHeight = clip.frameHeight ?? sheet.defaults?.frameHeight ?? 64;
@@ -158,7 +161,7 @@ export class GrayboxRenderer {
       this.idleSheet = sliceRowSheet(image, frameWidth, frameHeight, clip.frames);
     } catch {
       if (gen !== this.idleLoadGen) return;
-      this.idleSheet = null;
+      if (!this.idleSheet) this.idleSheet = null;
     }
   }
 
@@ -263,5 +266,8 @@ export class GrayboxRenderer {
     return this.app.ticker;
   }
 }
+
+
+
 
 
