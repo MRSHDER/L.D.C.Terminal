@@ -140,6 +140,31 @@ const POSE_BY_STATE: Readonly<Record<string, PoseTarget>> = {
 };
 
 const DEFAULT_POSE: PoseTarget = POSE_BY_STATE['Idle']!;
+const SPRITE_CLIP_BY_STATE: Readonly<Record<string, string>> = {
+  Idle: 'idle',
+  LookAt: 'idle',
+  Sit: 'idle',
+  Sleep: 'idle',
+  WagTail: 'idle',
+  PetEnjoy: 'idle',
+  HeadLow: 'idle',
+  LowHead: 'idle',
+  Sniff: 'idle',
+  Eat: 'idle',
+  Eating: 'idle',
+  Drink: 'idle',
+  Drinking: 'idle',
+  Walk: 'walk',
+  Approach: 'walk',
+  Retreat: 'walk',
+  Run: 'run',
+};
+
+function visualFrameCountForState(species: SpeciesData, stateId: string, fallback: number): number {
+  const spriteClipId = SPRITE_CLIP_BY_STATE[stateId];
+  const spriteFrameCount = spriteClipId ? species.resources.sprites?.clips[spriteClipId]?.frames : undefined;
+  return Math.max(1, spriteFrameCount ?? fallback);
+}
 
 export class AnimationSystem {
   private species: SpeciesData;
@@ -283,7 +308,9 @@ export class AnimationSystem {
     // ── ② 像素帧推进（低帧率节拍）──
     const steps = this.clock.advance(dtMs);
     const clip = this.clips.get(this.currentClipId);
-    const frameCount = Math.max(1, clip?.frames.length ?? 8); // 程序化 clip 用 8 相位
+    const frameCount = clip && clip.frames.length > 0
+      ? Math.max(1, clip.frames.length)
+      : visualFrameCountForState(species, this.currentClipId, 8); // 程序化 clip 用 8 相位
 
     if (steps > 0) {
       const prevFrame = this.currentFrame;
@@ -362,4 +389,7 @@ export class AnimationSystem {
     this.legPhase = 0;
   }
 }
+
+
+
 
