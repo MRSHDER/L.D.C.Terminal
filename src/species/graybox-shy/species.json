@@ -11,10 +11,13 @@
     "zh": "唯一目的是验证「同一套代码，换 JSON 就是另一只狗」。它需要更长时间建立信任，容易被吓到，但一旦亲近就非常粘人。",
     "en": "Exists to prove that one codebase plus different JSON equals a different animal. Slow to trust, easily startled, but deeply attached once bonded."
   },
-
   "physical": {
     "bodyScale": 0.96,
-    "hitbox": { "w": 52, "h": 46, "anchorY": 0.92 },
+    "hitbox": {
+      "w": 52,
+      "h": 46,
+      "anchorY": 0.92
+    },
     "grayboxTint": 16777215,
     "silhouette": {
       "bodyLength": 0.96,
@@ -28,7 +31,6 @@
       "tailAttach": 0.16
     }
   },
-
   "personality": {
     "temperament": {
       "gentleness": 0.85,
@@ -41,28 +43,51 @@
       "obedience": 0.5,
       "randomness": 0.3
     },
-    "traits": ["shy", "slow-warming", "devoted"]
+    "traits": [
+      "shy",
+      "slow-warming",
+      "devoted"
+    ]
   },
-
   "cognition": {
     "decisionIntervalMs": 780,
-    "reactionDelayMs": [500, 1500],
+    "reactionDelayMs": [
+      500,
+      1500
+    ],
     "attentionSpanMs": 7000,
     "memorySpanMs": 45000,
     "learningRate": 0.06
   },
-
   "animation": {
     "targetFps": 8,
-    "breath": { "freqHz": 0.19, "ampPx": 1.4, "bodyScaleY": 0.019 },
-    "blink": { "baseIntervalMs": 5200, "varianceMs": 2800, "durationMs": 160 },
-    "tail": { "segments": 3, "baseAngleDeg": 3, "maxSwingDeg": 12, "delayPerSegMs": 110 },
-    "ear": { "jitterDeg": 3, "triggerBias": 0.15 },
-    "float": { "ampPx": 0.7, "freqHz": 0.11 },
+    "breath": {
+      "freqHz": 0.19,
+      "ampPx": 1.4,
+      "bodyScaleY": 0.019
+    },
+    "blink": {
+      "baseIntervalMs": 5200,
+      "varianceMs": 2800,
+      "durationMs": 160
+    },
+    "tail": {
+      "segments": 3,
+      "baseAngleDeg": 3,
+      "maxSwingDeg": 12,
+      "delayPerSegMs": 110
+    },
+    "ear": {
+      "jitterDeg": 3,
+      "triggerBias": 0.15
+    },
+    "float": {
+      "ampPx": 0.7,
+      "freqHz": 0.11
+    },
     "transitions": {},
     "defaultTransitionMs": 320
   },
-
   "locomotion": {
     "walkSpeedPx": 22,
     "runSpeedPx": 48,
@@ -71,12 +96,32 @@
     "wanderChancePerMin": 1.6,
     "arriveThresholdPx": 4
   },
-
   "resources": {
     "assetRoot": "",
-    "animationClips": {}
+    "animationClips": {},
+    "sprites": {
+      "format": "sheet-row",
+      "defaults": {
+        "frameWidth": 96,
+        "frameHeight": 64,
+        "anchor": [
+          0.52,
+          0.92
+        ],
+        "baselineY": 60,
+        "facing": "right",
+        "loop": true
+      },
+      "clips": {
+        "idle": {
+          "src": "sprites/side-idle.png",
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        }
+      }
+    }
   },
-
   "affection": {
     "bonding": {
       "gainPerPet": 0.2,
@@ -84,11 +129,46 @@
       "penaltyPerSecWhenAnnoyed": 0.09,
       "requiresTouchToNotice": true,
       "ladder": [
-        { "atBond": 0.0, "state": "LookAt", "label": { "zh": "远远看着你", "en": "Watches from afar" } },
-        { "atBond": 0.4, "state": "Approach", "label": { "zh": "犹豫着靠近", "en": "Hesitantly approaches" } },
-        { "atBond": 0.66, "state": "Sit", "label": { "zh": "终于坐下来", "en": "Finally sits down" } },
-        { "atBond": 0.86, "state": "WagTail", "label": { "zh": "轻轻摇尾巴", "en": "Tail wags softly" } },
-        { "atBond": 0.96, "state": "PetEnjoy", "label": { "zh": "完全信任", "en": "Fully trusts you" } }
+        {
+          "atBond": 0,
+          "state": "LookAt",
+          "label": {
+            "zh": "远远看着你",
+            "en": "Watches from afar"
+          }
+        },
+        {
+          "atBond": 0.4,
+          "state": "Approach",
+          "label": {
+            "zh": "犹豫着靠近",
+            "en": "Hesitantly approaches"
+          }
+        },
+        {
+          "atBond": 0.66,
+          "state": "Sit",
+          "label": {
+            "zh": "终于坐下来",
+            "en": "Finally sits down"
+          }
+        },
+        {
+          "atBond": 0.86,
+          "state": "WagTail",
+          "label": {
+            "zh": "轻轻摇尾巴",
+            "en": "Tail wags softly"
+          }
+        },
+        {
+          "atBond": 0.96,
+          "state": "PetEnjoy",
+          "label": {
+            "zh": "完全信任",
+            "en": "Fully trusts you"
+          }
+        }
       ]
     },
     "petting": {
@@ -106,13 +186,15 @@
       "sulkMs": 8200
     }
   },
-
   "room": {
     "floorLineRatio": 0.74,
     "floorColor": 1973798,
     "floorShadeColor": 1447452,
     "wallColor": 1184280,
     "showGrid": false,
-    "playerAnchor": { "xRatio": 0.5, "yRatio": 1.15 }
+    "playerAnchor": {
+      "xRatio": 0.5,
+      "yRatio": 1.15
+    }
   }
 }

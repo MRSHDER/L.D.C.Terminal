@@ -43,4 +43,4 @@ export const SPECIES_SOURCES: readonly SpeciesSource[] = [
 ];
 
 /** 默认犬种仍是 graybox；伯恩山先注册不切默认。 */
-export const DEFAULT_SPECIES_ID = SPECIES_SOURCES[0]!.id;
+export const DEFAULT_SPECIES_ID = 'graybox';
