@@ -186,6 +186,7 @@ export interface SpriteClipConfig {
   readonly frameHeight?: number;
   readonly anchor?: readonly [number, number];
   readonly baselineY?: number;
+  readonly facing?: 'left' | 'right';
 }
 
 export interface SpriteSheetDefaults {
@@ -193,12 +194,12 @@ export interface SpriteSheetDefaults {
   readonly frameHeight?: number;
   readonly anchor?: readonly [number, number];
   readonly baselineY?: number;
-  readonly facing?: string;
+  readonly facing?: 'left' | 'right';
   readonly loop?: boolean;
 }
 
 export interface SpriteSheetConfig {
-  readonly format: 'sheet-row' | 'frame-files';
+  readonly format: 'sheet-row';
   readonly defaults?: SpriteSheetDefaults;
   readonly clips: Readonly<Record<string, SpriteClipConfig>>;
 }

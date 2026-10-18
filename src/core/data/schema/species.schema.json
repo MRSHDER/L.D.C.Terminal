@@ -814,12 +814,14 @@
       "type": "object",
       "required": [
         "src",
-        "frames"
+        "frames",
+        "fps"
       ],
       "additionalProperties": false,
       "properties": {
         "src": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "frames": {
           "type": "integer",
@@ -868,8 +870,7 @@
         "format": {
           "type": "string",
           "enum": [
-            "sheet-row",
-            "frame-files"
+            "sheet-row"
           ]
         },
         "defaults": {

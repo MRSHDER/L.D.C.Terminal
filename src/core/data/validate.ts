@@ -104,6 +104,78 @@ function requireUnit(
   }
 }
 
+function validateOptionalSpriteMetrics(
+  obj: Record<string, unknown>,
+  path: string,
+  errors: ValidationErrors,
+): void {
+  if (obj['loop'] !== undefined && typeof obj['loop'] !== 'boolean') {
+    errors.push(`${path}.loop 必须是布尔值`);
+  }
+  if (obj['frameWidth'] !== undefined) {
+    requireNumber(obj, 'frameWidth', path, errors, { min: 1, integer: true });
+  }
+  if (obj['frameHeight'] !== undefined) {
+    requireNumber(obj, 'frameHeight', path, errors, { min: 1, integer: true });
+  }
+  if (obj['baselineY'] !== undefined) requireNumber(obj, 'baselineY', path, errors, { min: 0 });
+  if (obj['facing'] !== undefined && !['left', 'right'].includes(String(obj['facing']))) {
+    errors.push(`${path}.facing 必须是 left 或 right`);
+  }
+  if (obj['anchor'] !== undefined) {
+    const anchor = obj['anchor'];
+    if (!Array.isArray(anchor) || anchor.length !== 2 || !isNumber(anchor[0]) || !isNumber(anchor[1])) {
+      errors.push(`${path}.anchor 必须是长度为 2 的 number 数组`);
+    }
+  }
+}
+
+function validateSpriteClip(raw: unknown, path: string, errors: ValidationErrors): void {
+  if (!isObject(raw)) {
+    errors.push(`${path} 必须是对象`);
+    return;
+  }
+  if (!isString(raw['src']) || raw['src'].length === 0) {
+    errors.push(`${path}.src 必须是非空字符串`);
+  }
+  requireNumber(raw, 'frames', path, errors, { min: 1, integer: true });
+  requireNumber(raw, 'fps', path, errors, { min: 1, max: 60 });
+  rejectUnknownSpriteKeys(raw, ['src', 'frames', 'fps', 'loop', 'frameWidth', 'frameHeight', 'anchor', 'baselineY', 'facing'], path, errors);
+  validateOptionalSpriteMetrics(raw, path, errors);
+}
+
+function rejectUnknownSpriteKeys(
+  obj: Record<string, unknown>, keys: readonly string[], path: string, errors: ValidationErrors,
+): void {
+  for (const key of Object.keys(obj)) {
+    if (!keys.includes(key)) errors.push(`${path}.${key} 是未知字段`);
+  }
+}
+
+function validateSprites(raw: unknown, errors: ValidationErrors): void {
+  const path = 'resources.sprites';
+  if (!isObject(raw)) {
+    errors.push(`${path} 必须是对象`);
+    return;
+  }
+  rejectUnknownSpriteKeys(raw, ['format', 'defaults', 'clips'], path, errors);
+  if (raw['format'] !== 'sheet-row') errors.push(`${path}.format 必须是 sheet-row`);
+  if (raw['defaults'] !== undefined) {
+    const defaults = requireObject(raw, 'defaults', path, errors);
+    if (defaults) {
+      rejectUnknownSpriteKeys(defaults, ['frameWidth', 'frameHeight', 'anchor', 'baselineY', 'facing', 'loop'], `${path}.defaults`, errors);
+      validateOptionalSpriteMetrics(defaults, `${path}.defaults`, errors);
+      if (defaults['facing'] !== undefined && !isString(defaults['facing'])) {
+        errors.push(`${path}.defaults.facing 必须是字符串`);
+      }
+    }
+  }
+  const clips = requireObject(raw, 'clips', path, errors);
+  if (clips) {
+    for (const [name, clip] of Object.entries(clips)) validateSpriteClip(clip, `${path}.clips.${name}`, errors);
+  }
+}
+
 /** 校验 species.json 的原始（未合并）数据 */
 export function validateSpeciesShape(raw: Record<string, unknown>): ValidationErrors {
   const errors: ValidationErrors = [];
@@ -137,6 +209,12 @@ export function validateSpeciesShape(raw: Record<string, unknown>): ValidationEr
   if (hitbox) {
     requireNumber(hitbox, 'w', 'physical.hitbox', errors, { min: 1 });
     requireNumber(hitbox, 'h', 'physical.hitbox', errors, { min: 1 });
+  }
+
+  // Sprites are optional; declared resources must be structurally valid before loading.
+  if (raw['resources'] !== undefined) {
+    const resources = requireObject(raw, 'resources', '', errors);
+    if (resources && resources['sprites'] !== undefined) validateSprites(resources['sprites'], errors);
   }
 
   // ── personality.temperament（全部必填，这是犬种的身份） ──
